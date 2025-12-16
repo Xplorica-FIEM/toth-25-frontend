@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { useRouter } from 'next/router';
 import RiddleTemplate from '../../components/RiddleTemplate';
-import { riddles } from '../../data/riddles';
+import { riddles, verifyRiddleKey } from '../../data/riddles';
 
 const RiddlePage = () => {
   const router = useRouter();
   const { id } = router.query;
-
+  
   // Find the riddle by id
   const riddle = riddles.find(r => r.id === parseInt(id));
+
+  
 
   // If riddle not found, show error
   if (!riddle && id) {
@@ -34,7 +37,7 @@ const RiddlePage = () => {
     <RiddleTemplate 
       riddleContent={riddle.content}
       backgroundImage={riddle.background}
-      isAuthenticated={false}
+      isAuthenticated={riddle.isAuthenticated}
     />
   );
 };

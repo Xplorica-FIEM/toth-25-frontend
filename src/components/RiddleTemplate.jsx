@@ -105,7 +105,7 @@ const EnterButton = styled.span`
   ` : ''}
 `;
 
-const RiddleTemplate = ({ riddleContent, backgroundImage, isAuthenticated = false }) => {
+const RiddleTemplate = ({ riddleContent, backgroundImage, isAuthenticated }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [showError, setShowError] = useState(false);
