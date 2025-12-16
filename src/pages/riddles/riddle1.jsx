@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import styled, { css } from 'styled-components';
 
+const isAuthenticated = false; // Simulating authentication status
+
 const PageContainer = styled.div`
   width: 100%;
   height: 100%;
@@ -71,7 +73,16 @@ const Overlay = styled.div`
   `}
 `;
 
+const shakeAnimation = css`
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+    20%, 40%, 60%, 80% { transform: translateX(10px); }
+  }
+`;
+
 const EnterButton = styled.span`
+  ${shakeAnimation}
   font-size: 1.5rem;
   font-weight: bold;
   letter-spacing: 2px;
@@ -84,20 +95,51 @@ const EnterButton = styled.span`
   
   &:hover {
     border: 1px solid gold;
+    
     border-radius: 15px;
     color: gold;
   }
+
+  ${props => props.$showError ? css`
+    animation: shake 0.5s;
+    &:hover {
+    {/*
+    //option 1
+    color: red;
+    border: 1px solid red;
+    border-radius: 15px;
+
+    //option 2
+    color: gold;
+    background-color: red;
+    border: 1px solid red;
+    border-radius: 15px;
+    */}
+    //using option 1
+    color: red;
+    border: 1px solid red;
+    border-radius: 15px;
+
+    }
+  ` : ''}
 `;
 
 const Riddle1 = () => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);//simulating authentication
+  const [showError, setShowError] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
   const handleReveal = () => {
+    if (!isAuthenticated) {
+      setShowError(true);
+      setTimeout(() => setShowError(false), 500);
+      return;
+    }
     setIsRevealed(true);
   };
 
@@ -126,7 +168,7 @@ const Riddle1 = () => {
           $isHidden={isRevealed}
         >
           {/* 6. Added the button inside the overlay so you can see what to click */}
-          <EnterButton>Click to Reveal</EnterButton>
+          <EnterButton $showError={showError}>Click to Reveal</EnterButton>
         </Overlay>     
     </Wrapper>
   );
