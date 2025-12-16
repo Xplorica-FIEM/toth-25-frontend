@@ -1,7 +1,8 @@
 import { verifyRiddleKey, setRiddleAuthentication } from '../data/riddles';
 
 /**
- * Authenticates a riddle by verifying the decrypted key
+ *  after getting and decrypting the key and riddle no from qr
+ * call this function to authenticate the riddle.
  * Each riddle has independent authentication tracked in riddles.js
  * @param {number} riddleNo - The riddle number to authenticate
  * @param {string} decryptedKey - The decrypted key to verify

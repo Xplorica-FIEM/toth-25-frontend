@@ -78,12 +78,23 @@ const shakeAnimation = css`
   }
 `;
 
-const EnterButton = styled.span`
+const EnterButton = styled.button`
   ${shakeAnimation}
   font-size: 1.5rem;
   font-weight: bold;
   letter-spacing: 2px;
   text-transform: uppercase;
+
+  user-select: none;        /* Prevents text selection */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  outline: none;  /* Remove default */
+  &:focus {
+    border: 2px solid gold;  /* Custom focus style */
+  }
+  
+  cursor: pointer;
+  
   
   color: black;
   padding: 1rem 2rem;

@@ -5,7 +5,8 @@ const privateKeys = {
   // Add more private keys as you add more riddles
 };
 
-// Verification function: compares decrypted key against private key
+// verifies if the key exists and if it doth match the decrypted key
+// to be called after decrypting the key from qr code
 export const verifyRiddleKey = (riddleNo, decryptedKey) => {
   const privateKey = privateKeys[riddleNo];
   
@@ -18,6 +19,7 @@ export const verifyRiddleKey = (riddleNo, decryptedKey) => {
 };
 
 // Add or remove riddles as needed
+
 export const riddles = [
   {
     id: 1,
