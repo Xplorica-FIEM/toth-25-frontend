@@ -15,7 +15,7 @@ export default function Record() {
     },
     {
       name: 'Registration',
-      path: '/rohan/Registration',
+      path: '/rohan/register',
       icon: UserPlus,
       description: 'Register new users'
     },
