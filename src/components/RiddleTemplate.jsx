@@ -116,6 +116,10 @@ const EnterButton = styled.button`
   ` : ''}
 `;
 
+const span=styled.span`
+  color: red;
+`;
+
 const RiddleTemplate = ({ riddleContent, backgroundImage, isAuthenticated }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -144,6 +148,7 @@ const RiddleTemplate = ({ riddleContent, backgroundImage, isAuthenticated }) => 
             <PageContainer $background={backgroundImage}>
                 <div style={{ padding: '35px' }}>
                     {riddleContent}
+                     <EnterButton >Scan Again</EnterButton>
                 </div>
             </PageContainer>
         </BlurWrapper>
