@@ -1,125 +1,163 @@
-import { Mail, Lock, ShieldCheck, Compass } from 'lucide-react';
+"use client";
+
+import { useState } from "react";
+import { Compass } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function Register() {
+  const router = useRouter();
+  const BACKEND_URL = 'https://8a23269b-e703-40f1-b9b1-fb7c6cc19541-00-enj9bfg3qvg.pike.replit.dev';
+
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [department, setDepartment] = useState("");
+  const [deptRollNo, setDeptRollNo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log("Registering to:", `${BACKEND_URL}/auth/register`);
+
+      const res = await fetch(`${BACKEND_URL}/auth/register`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          fullName,
+          email,
+          password,
+          phoneNumber,
+          department,
+          deptRollNo,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Registration failed");
+      }
+
+      alert("OTP sent to your email! Please check your inbox.");
+      router.push(`/verify-otp?email=${encodeURIComponent(email)}`);
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError(err.message || "Error connecting to server. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen relative">
-      {/* Background with overlay */}
-      <div 
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ 
-          backgroundImage: `url('https://images.unsplash.com/photo-1598177183308-ec8555cbfe76?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbmNpZW50JTIwdGVtcGxlJTIwcnVpbnN8ZW58MXx8fHwxNzY1OTkyNDc5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')`
-        }}
-      />
-      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
-      
-      {/* Content */}
-      <div className="relative z-10 min-h-screen px-6 py-12 flex flex-col items-center justify-center">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-3 mb-3">
-            <Compass className="size-12 text-amber-400 animate-pulse" />
-            <h1 className="text-amber-100">Ancient Treasures</h1>
-          </div>
-          <p className="text-amber-100/70">
-            Begin your legendary journey
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-black/80">
+      <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl shadow-xl">
+        <div className="text-center mb-6">
+          <Compass className="mx-auto text-amber-400" size={48} />
+          <h1 className="text-amber-100 text-2xl mt-2">Register</h1>
         </div>
 
-        {/* Registration Form */}
-        <div className="w-full max-w-md">
-          <div className="relative">
-            {/* Glow effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-600/20 to-amber-900/20 rounded-2xl blur-2xl" />
-            
-            {/* Form container */}
-            <div className="relative bg-gradient-to-br from-amber-900/60 to-stone-900/60 backdrop-blur-md rounded-2xl border border-amber-700/50 p-8 shadow-2xl">
-              <div className="text-center mb-8">
-                <h2 className="text-amber-100 mb-2">Create Your Account</h2>
-                <p className="text-amber-100/60">Register to unlock ancient mysteries</p>
-              </div>
-
-              <form className="space-y-5">
-                {/* Email Field */}
-                <div>
-                  <label htmlFor="email" className="block text-amber-100/90 mb-2">
-                    Email
-                  </label>
-                  <div className="relative group">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-amber-400/60 group-hover:text-amber-400/80 transition-colors" />
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      className="w-full pl-11 pr-4 py-3 bg-amber-950/40 border border-amber-700/40 rounded-lg text-amber-100 placeholder-amber-400/30 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 hover:border-amber-600/50 transition-all"
-                      placeholder="your.email@example.com"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Password Field */}
-                <div>
-                  <label htmlFor="password" className="block text-amber-100/90 mb-2">
-                    Password
-                  </label>
-                  <div className="relative group">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-amber-400/60 group-hover:text-amber-400/80 transition-colors" />
-                    <input
-                      type="password"
-                      id="password"
-                      name="password"
-                      className="w-full pl-11 pr-4 py-3 bg-amber-950/40 border border-amber-700/40 rounded-lg text-amber-100 placeholder-amber-400/30 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 hover:border-amber-600/50 transition-all"
-                      placeholder="Create a strong password"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Confirm Password Field */}
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-amber-100/90 mb-2">
-                    Confirm Password
-                  </label>
-                  <div className="relative group">
-                    <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-amber-400/60 group-hover:text-amber-400/80 transition-colors" />
-                    <input
-                      type="password"
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      className="w-full pl-11 pr-4 py-3 bg-amber-950/40 border border-amber-700/40 rounded-lg text-amber-100 placeholder-amber-400/30 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 hover:border-amber-600/50 transition-all"
-                      placeholder="Confirm your password"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Decorative divider */}
-                <div className="h-px bg-gradient-to-r from-transparent via-amber-700/50 to-transparent my-6" />
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  className="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl transition-all duration-300 shadow-lg hover:shadow-amber-500/50 hover:scale-105"
-                >
-                  Begin Adventure
-                </button>
-              </form>
-
-              {/* Decorative corner accents */}
-              <div className="absolute top-4 right-4 w-16 h-16 border-t-2 border-r-2 border-amber-600/20 rounded-tr-xl" />
-              <div className="absolute bottom-4 left-4 w-16 h-16 border-b-2 border-l-2 border-amber-600/20 rounded-bl-xl" />
-            </div>
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded text-red-200 text-sm">
+            {error}
           </div>
-        </div>
+        )}
 
-        {/* Footer ornament */}
-        <div className="mt-12 text-center">
-          <div className="inline-flex items-center gap-2 text-amber-400/40">
-            <div className="h-px w-8 bg-gradient-to-r from-transparent to-amber-400/40" />
-            <Compass className="size-4" />
-            <div className="h-px w-8 bg-gradient-to-l from-transparent to-amber-400/40" />
-          </div>
-        </div>
+        <form onSubmit={handleRegister} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Full Name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            minLength={3}
+            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="password"
+            placeholder="Password (min 6 characters)"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            minLength={6}
+            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="tel"
+            placeholder="Phone Number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            pattern="[0-9]{10}"
+            title="Please enter a valid 10-digit phone number"
+            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="text"
+            placeholder="Department"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="text"
+            placeholder="Department Roll No"
+            value={deptRollNo}
+            onChange={(e) => setDeptRollNo(e.target.value)}
+            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+
+          <button
+            disabled={loading}
+            type="submit"
+            className="w-full bg-amber-600 py-3 rounded text-white hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? "Registering..." : "Register"}
+          </button>
+        </form>
+
+        <p className="text-center text-gray-400 text-sm mt-4">
+          Already have an account?{" "}
+          <a href="/login" className="text-amber-400 hover:underline">
+            Login
+          </a>
+        </p>
       </div>
     </div>
   );
