@@ -1,9 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  allowedDevOrigins: [
-    'https://5ac4d6f7-353d-4047-8e3f-75c6db24bb2d-00-2u655wkyuoo3a.sisko.replit.dev',
-  ],
+  images: {
+    unoptimized: true,
+  },
+  allowedDevOrigins: ['*'],
   async headers() {
     return [
       {
@@ -16,6 +17,15 @@ const nextConfig = {
         ],
       },
     ];
+  },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      };
+    }
+    return config;
   },
 };
 

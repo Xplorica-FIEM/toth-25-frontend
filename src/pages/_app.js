@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import Loader from "./rohan/loadinganimation";
+import Persona from "./rohan/persona"; 
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
