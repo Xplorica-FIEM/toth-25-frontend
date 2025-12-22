@@ -19,13 +19,12 @@ export default function Login() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    // Clear error when user starts typing again
     if (error) setError("");
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setError(""); // Reset error state
+    setError("");
     setLoading(true);
 
     try {
@@ -41,7 +40,6 @@ export default function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        // Specific check for wrong credentials (usually 400 or 401)
         if (res.status === 401 || res.status === 400) {
           setError("Wrong credentials. Please try again.");
         } else {
@@ -52,9 +50,8 @@ export default function Login() {
 
       // Login successful
       alert("Welcome back!");
-      // Redirect to dashboard or home
-      router.push("/dashboard"); 
-
+      // Redirect to home page
+      router.push("/homepg");
     } catch (err) {
       console.error(err);
       setError("Server not reachable. Check connection.");
@@ -65,7 +62,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Ancient-themed background (Same as Register) */}
+      {/* Background */}
       <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -77,7 +74,6 @@ export default function Login() {
       {/* Form container */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-6">
         <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl backdrop-blur-md shadow-xl border border-amber-800/30">
-
           {/* Header */}
           <div className="text-center mb-8">
             <Compass className="mx-auto text-amber-400" size={42} />
@@ -87,7 +83,6 @@ export default function Login() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Error Message Display */}
             {error && (
               <div className="bg-red-900/50 border border-red-500/50 p-3 rounded text-red-200 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
                 <AlertCircle size={16} />
@@ -95,7 +90,6 @@ export default function Login() {
               </div>
             )}
 
-            {/* Email Input */}
             <div className="space-y-1">
               <label className="text-amber-200/80 text-sm ml-1">Email</label>
               <input
@@ -109,7 +103,6 @@ export default function Login() {
               />
             </div>
 
-            {/* Password Input */}
             <div className="space-y-1">
               <label className="text-amber-200/80 text-sm ml-1">Password</label>
               <input
@@ -134,11 +127,13 @@ export default function Login() {
           {/* Footer Link */}
           <div className="mt-6 text-center text-amber-200/60 text-sm">
             New here?{" "}
-            <Link href="/register" className="text-amber-400 hover:text-amber-300 underline underline-offset-4">
+            <Link
+              href="/register"
+              className="text-amber-400 hover:text-amber-300 underline underline-offset-4"
+            >
               Create an account
             </Link>
           </div>
-
         </div>
       </div>
     </div>
