@@ -48,13 +48,11 @@ export default function RegisterPage() {
         }),
       });
 
-
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || "Registration failed");
 
-      // OTP sent successfully, redirect to verify page
-      router.push(`/verifyotp?email=${encodeURIComponent(form.email.trim())}`);
+      router.push("/verifyotp?email=" + encodeURIComponent(form.email.trim()));
     } catch (err) {
       setError(err.message);
     } finally {
