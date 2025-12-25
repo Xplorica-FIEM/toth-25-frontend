@@ -1,118 +1,148 @@
-import { useState, useEffect } from 'react';
-import styled from 'styled-components';
+import { useRouter } from "next/router";
+import styled, { keyframes } from "styled-components";
+import { ScanLine, Scroll, Users, Compass } from "lucide-react";
 
-const PageContainer = styled.div`
-  width: 100%;
-  height: 100%;
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/* ---------------- Animations ---------------- */
+const float = keyframes`
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0); }
+`;
+
+/* ---------------- Layout ---------------- */
+const Page = styled.div`
   min-height: 100vh;
-  background-image: url('/toth3.png'); 
-  background-size: cover;
-  background-position: center;
-  color: #333;
-  font-family: Fantasy, fantasy;
-  font-size: 32px;
-  text-align: center;
-  border-radius: 3px; 
-`;
-
-const BlurWrapper = styled.div`
-  width: 100%;
-  height: 100vh; 
-  overflow: hidden;
-  filter: blur(10px);
-  transform: scale(1.05);
-  pointer-events: none;
-  user-select: none;
-`;
-
-const Wrapper = styled.section`
-  position: relative;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+  background: url("/toth3.png") center / cover no-repeat;
+  font-family: "Cinzel", serif;
 `;
 
 const Overlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 10;
-  background-color: rgba(0, 0, 0, 0.3); 
+  min-height: 100vh;
+  backdrop-filter: blur(8px) brightness(0.55);
+  background: radial-gradient(circle, transparent 0%, rgba(0,0,0,0.7) 100%);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
   align-items: center;
   justify-content: center;
+  gap: 1.75rem;
 `;
 
-const Button = styled.span`
-  font-size: 1.5rem;
-  font-weight: bold;
-  letter-spacing: 2px;
+/* ---------------- Header ---------------- */
+const Header = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fde68a;
+  animation: ${float} 6s ease-in-out infinite;
+  user-select: none;
+`;
+
+const TitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  h1 {
+    font-size: 2.8rem;
+    letter-spacing: 3px;
+    margin: 0;
+  }
+
+  svg {
+    color: #fbbf24;
+    filter: drop-shadow(0 0 10px rgba(251,191,36,0.6));
+  }
+`;
+
+const Subtitle = styled.p`
+  opacity: 0.85;
+  max-width: 420px;
+  margin-top: 0.5rem;
+  text-align: center;
+`;
+
+/* ---------------- Buttons ---------------- */
+const ActionButton = styled.button`
+  width: 360px;
+  padding: 1.4rem 1.8rem;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+
+  background: linear-gradient(
+    135deg,
+    rgba(120, 53, 15, 0.9),
+    rgba(28, 25, 23, 0.95)
+  );
+  border: 1px solid rgba(251,191,36,0.35);
+  color: #fde68a;
+  font-size: 1.15rem;
+  letter-spacing: 1px;
+  font-weight: 700;
   text-transform: uppercase;
 
-  color: black;
-  padding: 1rem 2rem;
-  transition: all 0.3s ease;
-  user-select: none;
   cursor: pointer;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+  transition: all 0.3s ease;
+
+  .icon {
+    background: rgba(251,191,36,0.2);
+    padding: 0.7rem;
+    border-radius: 10px;
+    color: #fbbf24;
+  }
 
   &:hover {
-    border: 1px solid gold;
-    border-radius: 15px;
-    color: gold;
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 18px 45px rgba(251,191,36,0.25);
+
+    .icon {
+      background: rgba(251,191,36,0.35);
+      color: #fff;
+    }
   }
 `;
 
-const Dashboard2 = () => {
-  const [isMounted, setIsMounted] = useState(false);
-  const [isMod, setIsMod] = useState(true); // Set to true for mod view
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const handleScan = () => {
-    console.log('Scan button clicked!');
-  };
-
-  const handleModAction1 = () => {
-    console.log('Mod action 1 clicked!');
-  };
-
-  const handleModAction2 = () => {
-    console.log('Mod action 2 clicked!');
-  };
-
-  if (!isMounted) {
-    return null;
-  }
+/* ---------------- Component ---------------- */
+export default function Dashboard() {
+  const router = useRouter();
+  const isMod = true;
 
   return (
-    <Wrapper>
-        <BlurWrapper>
-            <PageContainer>
-            </PageContainer>
-        </BlurWrapper>
+    <Page>
+      <Overlay>
+        <Header>
+          <Compass size={48} className="animate-pulse" />
+          <TitleRow>
+            <h1>Dashboard</h1>
+          </TitleRow>
 
-        <Overlay>
-          <Button onClick={handleScan}>Scan</Button>
+          <Subtitle className="text-amber-100/80 max-w-2xl mx-auto">
+            Scan QR codes to solve riddles and unveil the truth.
+          </Subtitle>
+        </Header>
 
-          {isMod && (
-            <>
-              <Button onClick={handleModAction1}>Mod Action 1</Button>
-              <Button onClick={handleModAction2}>Mod Action 2</Button>
-            </>
-          )}
-        </Overlay>     
-    </Wrapper>
+        <ActionButton onClick={() => router.push("/scan")}>
+          <div className="icon"><ScanLine size={24} /></div>
+          Scan QR
+        </ActionButton>
+
+        {isMod && (
+          <>
+            <ActionButton onClick={() => router.push("/riddles")}>
+              <div className="icon"><Scroll size={24} /></div>
+              Riddle List
+            </ActionButton>
+
+            <ActionButton onClick={() => router.push("/users")}>
+              <div className="icon"><Users size={24} /></div>
+              User List
+            </ActionButton>
+          </>
+        )}
+      </Overlay>
+    </Page>
   );
-};
-
-export default Dashboard2;
+}

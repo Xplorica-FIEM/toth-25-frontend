@@ -1,7 +1,5 @@
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/router";
 import Link from "next/link";
 import { Compass, AlertCircle } from "lucide-react";
 
@@ -9,11 +7,7 @@ export default function Login() {
   const router = useRouter();
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
-
+  const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -32,15 +26,15 @@ export default function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: String(form.email).trim().toLowerCase(),
-          password: String(form.password).trim(),
+          email: form.email.trim().toLowerCase(),
+          password: form.password.trim(),
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 401 || res.status === 400) {
+        if (res.status === 400 || res.status === 401) {
           setError("Wrong credentials. Please try again.");
         } else {
           setError(data.message || "Login failed");
@@ -48,10 +42,8 @@ export default function Login() {
         return;
       }
 
-      // Login successful
       alert("Welcome back!");
-      // Redirect to home page
-      router.push("/homepg");
+      router.push("/homepg"); // make sure this page exists
     } catch (err) {
       console.error(err);
       setError("Server not reachable. Check connection.");
@@ -62,7 +54,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Background */}
       <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat"
         style={{
@@ -71,10 +62,8 @@ export default function Login() {
       />
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
 
-      {/* Form container */}
       <div className="relative z-10 min-h-screen flex items-center justify-center px-6">
         <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl backdrop-blur-md shadow-xl border border-amber-800/30">
-          {/* Header */}
           <div className="text-center mb-8">
             <Compass className="mx-auto text-amber-400" size={42} />
             <h1 className="text-amber-100 text-2xl mt-2 font-serif tracking-wider">
@@ -124,7 +113,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Footer Link */}
           <div className="mt-6 text-center text-amber-200/60 text-sm">
             New here?{" "}
             <Link

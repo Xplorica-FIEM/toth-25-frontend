@@ -13,7 +13,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Background */}
+      {/* Background image */}
       <div
         className="fixed inset-0 bg-cover bg-center"
         style={{
@@ -21,7 +21,11 @@ export default function HomePage() {
             "url('https://images.unsplash.com/photo-1618385418700-35dc948cdeec')",
         }}
       />
-      <div className="fixed inset-0 bg-black/65 backdrop-blur-sm" />
+
+      {/* ⬇️ IMPORTANT: hide this overlay when scanner is open */}
+      {!showScanner && (
+        <div className="fixed inset-0 bg-black/65 backdrop-blur-sm" />
+      )}
 
       <div className="relative z-10 min-h-screen px-6 py-12">
         <div className="max-w-6xl mx-auto text-center">
@@ -33,20 +37,17 @@ export default function HomePage() {
               </h1>
             </div>
             <p className="text-amber-100/80 max-w-2xl mx-auto">
-              Scan ancient QR codes and solve riddles to uncover hidden secrets.
+              Scan QR codes to uncover hidden truths.
             </p>
           </header>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {/* Scanner */}
             <div className="bg-gradient-to-br from-amber-900/60 to-stone-900/60 rounded-2xl border border-amber-700/50 p-8 shadow-2xl">
-              <div className="mb-6 p-5 bg-amber-700/40 rounded-2xl w-fit">
-                <ScanLine className="size-12 text-amber-100" />
-              </div>
-              <h2 className="text-amber-100 text-2xl mb-4">Open Scanner</h2>
-              <p className="text-amber-100/70 mb-8">
-                Scan hidden QR codes to reveal clues and rewards.
-              </p>
+              <ScanLine className="size-12 text-amber-100 mb-6" />
+              <h2 className="text-amber-100 text-2xl mb-4">
+                Open Scanner
+              </h2>
               <button
                 onClick={() => setShowScanner(true)}
                 className="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl"
@@ -57,15 +58,12 @@ export default function HomePage() {
 
             {/* Riddles */}
             <div className="bg-gradient-to-br from-amber-900/60 to-stone-900/60 rounded-2xl border border-amber-700/50 p-8 shadow-2xl">
-              <div className="mb-6 p-5 bg-amber-700/40 rounded-2xl w-fit">
-                <Scroll className="size-12 text-amber-100" />
-              </div>
-              <h2 className="text-amber-100 text-2xl mb-4">Riddles</h2>
-              <p className="text-amber-100/70 mb-8">
-                Solve puzzles to unlock the next treasure stage.
-              </p>
+              <Scroll className="size-12 text-amber-100 mb-6" />
+              <h2 className="text-amber-100 text-2xl mb-4">
+                Riddles
+              </h2>
               <button
-                onClick={() => router.push("/admin/riddle-list")}
+                onClick={() => router.push("/admin/riddles-list")}
                 className="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-xl"
               >
                 Open Riddles
@@ -75,7 +73,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Scanner Modal */}
+      {/* Scanner modal */}
       {showScanner && <Scan onClose={() => setShowScanner(false)} />}
     </div>
   );

@@ -1,85 +1,85 @@
-import { useState, useRef, useEffect } from "react";
+// components/scan.jsx
+import { useEffect, useRef, useState } from "react";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { X, ScanLine } from "lucide-react";
+import { X } from "lucide-react";
 
 export default function Scan({ onClose }) {
-  const [mounted, setMounted] = useState(false); // For client-side rendering
+  const videoRef = useRef(null);
+  const readerRef = useRef(null);
+
   const [scannedData, setScannedData] = useState("");
   const [error, setError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
 
-  const videoRef = useRef(null);
-  const codeReaderRef = useRef(null);
-
   useEffect(() => {
-    setMounted(true); // Only render on client
-  }, []);
+    readerRef.current = new BrowserQRCodeReader();
 
-  useEffect(() => {
-    if (!mounted) return;
-
-    codeReaderRef.current = new BrowserQRCodeReader();
-    startScanning();
+    // wait for DOM paint so videoRef exists
+    const timeout = setTimeout(() => {
+      startScanning();
+    }, 300);
 
     return () => {
-      if (codeReaderRef.current) {
-        codeReaderRef.current.reset();
-        codeReaderRef.current = null;
-      }
+      clearTimeout(timeout);
+      stopScanning();
     };
-  }, [mounted]);
+  }, []);
 
   const startScanning = async () => {
+    if (!videoRef.current || !readerRef.current) return;
+
     try {
-      setIsScanning(true);
       setError("");
       setScannedData("");
+      setIsScanning(true);
 
-      const devices = await codeReaderRef.current.listVideoInputDevices();
+      const devices =
+        await BrowserQRCodeReader.listVideoInputDevices();
 
       if (!devices.length) {
-        setError("No camera found. Please allow camera access.");
+        setError("No camera found");
         setIsScanning(false);
         return;
       }
 
       const backCamera =
-        devices.find(
-          (d) =>
-            d.label.toLowerCase().includes("back") ||
-            d.label.toLowerCase().includes("rear")
+        devices.find((d) =>
+          d.label.toLowerCase().includes("back")
         ) || devices[0];
 
-      codeReaderRef.current.decodeFromVideoDevice(
+      await readerRef.current.decodeFromVideoDevice(
         backCamera.deviceId,
         videoRef.current,
         (result, err) => {
           if (result) {
-            setScannedData(result.getText());
+            const text = result.getText();
+            setScannedData(text);
             setIsScanning(false);
-            codeReaderRef.current.reset();
-            // Redirect if scanned data is a URL
-            if (result.getText().startsWith("http")) {
-              window.location.href = result.getText();
-            }
+            stopScanning();
           }
+
           if (err && err.name !== "NotFoundException") {
             console.error(err);
           }
         }
       );
-    } catch (err) {
-      console.error(err);
-      setError("Camera access failed. Check permissions.");
+    } catch (e) {
+      console.error(e);
+      setError("Camera permission denied or unavailable");
       setIsScanning(false);
     }
   };
 
-  if (!mounted) return null;
+  const stopScanning = () => {
+    try {
+      readerRef.current?.reset();
+    } catch {}
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="relative w-full max-w-2xl mx-4">
+        {/* Close */}
         <button
           onClick={onClose}
           className="absolute -top-12 right-0 text-white"
@@ -92,27 +92,32 @@ export default function Scan({ onClose }) {
             QR Code Scanner
           </h2>
 
+          {/* Camera */}
           <div className="bg-black rounded-xl overflow-hidden mb-4">
             <video
               ref={videoRef}
-              muted
+              autoPlay
               playsInline
-              className="w-full max-h-[60vh]"
+              muted
+              className="w-full h-[300px] object-cover"
             />
           </div>
 
+          {/* Error */}
           {error && (
             <div className="p-3 bg-red-900/50 text-red-200 rounded-lg text-center">
               {error}
             </div>
           )}
 
+          {/* Result */}
           {scannedData && (
-            <div className="p-3 bg-green-900/50 text-green-200 rounded-lg">
-              <p className="break-all">{scannedData}</p>
+            <div className="p-3 bg-green-900/50 text-green-200 rounded-lg break-all">
+              {scannedData}
             </div>
           )}
 
+          {/* Actions */}
           <div className="mt-4 flex gap-3">
             <button
               onClick={onClose}
@@ -120,14 +125,13 @@ export default function Scan({ onClose }) {
             >
               Close
             </button>
-            {scannedData && (
-              <button
-                onClick={startScanning}
-                className="flex-1 py-3 bg-amber-600 text-white rounded-xl"
-              >
-                Scan Again
-              </button>
-            )}
+
+            <button
+              onClick={startScanning}
+              className="flex-1 py-3 bg-amber-600 text-white rounded-xl"
+            >
+              Scan Again
+            </button>
           </div>
         </div>
       </div>

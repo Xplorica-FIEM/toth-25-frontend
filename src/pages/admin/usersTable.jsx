@@ -56,9 +56,9 @@ export default function Users() {
       {/* ---------------- HEADER ---------------- */}
       <header className="text-center mb-12">
         <Compass className="mx-auto size-14 text-amber-400 animate-pulse" />
-        <h1 className="text-4xl font-bold mt-4">User Guild</h1>
+        <h1 className="text-4xl font-bold mt-4">User List</h1>
         <p className="text-amber-100/70 mt-2">
-          Manage the adventurers registered in the system
+          Manage the players registered in the system
         </p>
       </header>
 
@@ -93,14 +93,14 @@ export default function Users() {
           </div>
         ) : users.length === 0 ? (
           <p className="p-6 text-center text-amber-100/70">
-            No adventurers found.
+            No players found.
           </p>
         ) : (
           <table className="w-full text-left">
             <thead className="bg-amber-800/40">
               <tr>
                 <th className="p-4 text-amber-200">Name</th>
-                <th className="p-4 text-amber-200">Email Scroll</th>
+                <th className="p-4 text-amber-200">Email</th>
                 <th className="p-4 text-amber-200 text-right">Actions</th>
               </tr>
             </thead>

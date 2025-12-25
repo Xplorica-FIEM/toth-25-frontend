@@ -28,7 +28,7 @@ export default function Record() {
     },
     {
       name: "Users List",
-      path: "/users",
+      path: "/admin/usersTable",
       icon: Users,
       description: "View all registered users",
     },
