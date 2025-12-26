@@ -1,4 +1,6 @@
 // pages/register.jsx
+"use client";
+
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
@@ -25,6 +27,7 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
 
+    // Basic validation
     if (!form.email || !form.password || !form.confirmPassword) {
       setError("All fields are required");
       setLoading(false);
@@ -36,23 +39,30 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
     try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email.trim(),
-          password: form.password,
-          confirmPassword: form.confirmPassword,
-        }),
-      });
-
+      const res = await fetch(`${BACKEND_URL}/auth/register`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: form.email.trim(),
+            password: form.password,
+            confirmPassword: form.confirmPassword,
+          }),
+        }
+      );
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || "Registration failed");
 
-      router.push("/verifyotp?email=" + encodeURIComponent(form.email.trim()));
+      // Redirect to OTP verification page
+      router.push(
+        `/verifyotp?email=${encodeURIComponent(form.email.trim())}`
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -72,7 +82,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Error */}
+        {/* Error Message */}
         {error && (
           <div className="p-3 bg-red-500/20 rounded text-red-200 text-sm flex items-center gap-2">
             <AlertCircle size={16} />
@@ -80,7 +90,7 @@ export default function RegisterPage() {
           </div>
         )}
 
-        {/* Form */}
+        {/* Registration Form */}
         <form onSubmit={handleRegister} className="space-y-4">
           <input
             type="email"
