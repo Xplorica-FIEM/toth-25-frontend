@@ -69,7 +69,7 @@ const fetchAPI = async (endpoint, options = {}) => {
  * Register new user (Step 1)
  */
 export const register = async (email, password, confirmPassword) => {
-  return fetchAPI('/auth/register', {
+  return fetchAPI('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify({ email, password, confirmPassword }),
   });
@@ -79,7 +79,7 @@ export const register = async (email, password, confirmPassword) => {
  * Verify OTP (Step 2)
  */
 export const verifyOTP = async (email, otp) => {
-  return fetchAPI('/auth/verify-otp', {
+  return fetchAPI('/api/auth/verify-otp', {
     method: 'POST',
     body: JSON.stringify({ email, otp }),
   });
@@ -89,7 +89,7 @@ export const verifyOTP = async (email, otp) => {
  * Resend OTP
  */
 export const resendOTP = async (email) => {
-  return fetchAPI('/auth/resend-otp', {
+  return fetchAPI('/api/auth/resend-otp', {
     method: 'POST',
     body: JSON.stringify({ email }),
   });
@@ -99,7 +99,7 @@ export const resendOTP = async (email) => {
  * Complete profile (Step 3)
  */
 export const completeProfile = async (email, fullName, classRollNo, phoneNumber, department) => {
-  return fetchAPI('/auth/complete-profile', {
+  return fetchAPI('/api/auth/complete-profile', {
     method: 'POST',
     body: JSON.stringify({ email, fullName, classRollNo, phoneNumber, department }),
   });
@@ -109,7 +109,7 @@ export const completeProfile = async (email, fullName, classRollNo, phoneNumber,
  * Login
  */
 export const login = async (email, password) => {
-  return fetchAPI('/auth/login', {
+  return fetchAPI('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
@@ -119,7 +119,7 @@ export const login = async (email, password) => {
  * Get current user info
  */
 export const getCurrentUser = async () => {
-  return fetchAPI('/auth/me');
+  return fetchAPI('/api/auth/me');
 };
 
 // ==================== SCAN ENDPOINTS ====================
@@ -128,7 +128,7 @@ export const getCurrentUser = async () => {
  * Scan QR code and unlock riddle
  */
 export const scanQR = async (riddleId) => {
-  return fetchAPI('/scan', {
+  return fetchAPI('/api/scan', {
     method: 'POST',
     body: JSON.stringify({ riddleId }),
   });
@@ -140,21 +140,21 @@ export const scanQR = async (riddleId) => {
  * Get user game progress
  */
 export const getProgress = async () => {
-  return fetchAPI('/game/progress');
+  return fetchAPI('/api/game/progress');
 };
 
 /**
  * Get user's scan history
  */
 export const getMyScans = async () => {
-  return fetchAPI('/game/my-scans');
+  return fetchAPI('/api/game/my-scans');
 };
 
 /**
  * Complete game
  */
 export const completeGame = async () => {
-  return fetchAPI('/game/complete', {
+  return fetchAPI('/api/game/complete', {
     method: 'POST',
   });
 };
@@ -166,14 +166,14 @@ export const completeGame = async () => {
  */
 export const getLeaderboard = async (department = '') => {
   const query = department ? `?department=${encodeURIComponent(department)}` : '';
-  return fetchAPI(`/leaderboard${query}`);
+  return fetchAPI(`/api/leaderboard${query}`);
 };
 
 /**
  * Get top performers
  */
 export const getTopPerformers = async () => {
-  return fetchAPI('/leaderboard/top');
+  return fetchAPI('/api/leaderboard/top');
 };
 
 // ==================== USER ENDPOINTS ====================
@@ -182,21 +182,21 @@ export const getTopPerformers = async () => {
  * Get all users
  */
 export const getUsers = async () => {
-  return fetchAPI('/users');
+  return fetchAPI('/api/users');
 };
 
 /**
  * Get user by ID
  */
 export const getUserById = async (userId) => {
-  return fetchAPI(`/users/${userId}`);
+  return fetchAPI(`/api/users/${userId}`);
 };
 
 /**
  * Delete user (Admin only)
  */
 export const deleteUser = async (userId) => {
-  return fetchAPI(`/users/${userId}`, {
+  return fetchAPI(`/api/users/${userId}`, {
     method: 'DELETE',
   });
 };
@@ -207,14 +207,14 @@ export const deleteUser = async (userId) => {
  * Get all riddles (Admin)
  */
 export const getAdminRiddles = async () => {
-  return fetchAPI('/admin/riddles');
+  return fetchAPI('/api/admin/riddles');
 };
 
 /**
  * Create riddle (Admin)
  */
 export const createRiddle = async (riddleData) => {
-  return fetchAPI('/admin/riddles', {
+  return fetchAPI('/api/admin/riddles', {
     method: 'POST',
     body: JSON.stringify(riddleData),
   });
@@ -224,7 +224,7 @@ export const createRiddle = async (riddleData) => {
  * Update riddle (Admin)
  */
 export const updateRiddle = async (riddleId, riddleData) => {
-  return fetchAPI(`/admin/riddles/${riddleId}`, {
+  return fetchAPI(`/api/admin/riddles/${riddleId}`, {
     method: 'PUT',
     body: JSON.stringify(riddleData),
   });
@@ -234,7 +234,7 @@ export const updateRiddle = async (riddleId, riddleData) => {
  * Delete riddle (Admin)
  */
 export const deleteRiddle = async (riddleId) => {
-  return fetchAPI(`/admin/riddles/${riddleId}`, {
+  return fetchAPI(`/api/admin/riddles/${riddleId}`, {
     method: 'DELETE',
   });
 };
@@ -243,14 +243,14 @@ export const deleteRiddle = async (riddleId) => {
  * Get all users (Admin)
  */
 export const getAdminUsers = async () => {
-  return fetchAPI('/admin/users');
+  return fetchAPI('/api/admin/users');
 };
 
 /**
  * Toggle admin status (Admin)
  */
 export const toggleAdminStatus = async (userId) => {
-  return fetchAPI(`/admin/users/${userId}/toggle-admin`, {
+  return fetchAPI(`/api/admin/users/${userId}/toggle-admin`, {
     method: 'PUT',
   });
 };
@@ -259,7 +259,7 @@ export const toggleAdminStatus = async (userId) => {
  * Get admin stats
  */
 export const getAdminStats = async () => {
-  return fetchAPI('/admin/stats');
+  return fetchAPI('/api/admin/stats');
 };
 
 export default {
