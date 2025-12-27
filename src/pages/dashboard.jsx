@@ -89,7 +89,7 @@ function DashboardContent() {
               <div className="flex items-center gap-3 mb-2">
                 <Compass className="size-10 text-amber-400" />
                 <h1 className="text-amber-100 text-3xl font-bold">
-                  Treasure Hunt
+                  TOTH-25
                 </h1>
               </div>
               <p className="text-amber-100/80">
