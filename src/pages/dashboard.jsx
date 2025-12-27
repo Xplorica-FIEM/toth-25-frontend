@@ -1,148 +1,197 @@
+// pages/dashboard.jsx - Main dashboard with user stats
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
-import styled, { keyframes } from "styled-components";
-import { ScanLine, Scroll, Users, Compass } from "lucide-react";
+import { Compass, ScanLine, Trophy, Users, LogOut, User, TrendingUp } from "lucide-react";
+import dynamic from "next/dynamic";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import { getCurrentUser, getProgress } from "@/utils/api";
+import { logout, getUser } from "@/utils/auth";
+import Loader from "./loadinganimation";
 
-/* ---------------- Animations ---------------- */
-const float = keyframes`
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-  100% { transform: translateY(0); }
-`;
+const Scan = dynamic(() => import("../components/scan"), {
+  ssr: false,
+});
 
-/* ---------------- Layout ---------------- */
-const Page = styled.div`
-  min-height: 100vh;
-  background: url("/toth3.png") center / cover no-repeat;
-  font-family: "Cinzel", serif;
-`;
-
-const Overlay = styled.div`
-  min-height: 100vh;
-  backdrop-filter: blur(8px) brightness(0.55);
-  background: radial-gradient(circle, transparent 0%, rgba(0,0,0,0.7) 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1.75rem;
-`;
-
-/* ---------------- Header ---------------- */
-const Header = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #fde68a;
-  animation: ${float} 6s ease-in-out infinite;
-  user-select: none;
-`;
-
-const TitleRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-
-  h1 {
-    font-size: 2.8rem;
-    letter-spacing: 3px;
-    margin: 0;
-  }
-
-  svg {
-    color: #fbbf24;
-    filter: drop-shadow(0 0 10px rgba(251,191,36,0.6));
-  }
-`;
-
-const Subtitle = styled.p`
-  opacity: 0.85;
-  max-width: 420px;
-  margin-top: 0.5rem;
-  text-align: center;
-`;
-
-/* ---------------- Buttons ---------------- */
-const ActionButton = styled.button`
-  width: 360px;
-  padding: 1.4rem 1.8rem;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  gap: 1.4rem;
-
-  background: linear-gradient(
-    135deg,
-    rgba(120, 53, 15, 0.9),
-    rgba(28, 25, 23, 0.95)
-  );
-  border: 1px solid rgba(251,191,36,0.35);
-  color: #fde68a;
-  font-size: 1.15rem;
-  letter-spacing: 1px;
-  font-weight: 700;
-  text-transform: uppercase;
-
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.45);
-  transition: all 0.3s ease;
-
-  .icon {
-    background: rgba(251,191,36,0.2);
-    padding: 0.7rem;
-    border-radius: 10px;
-    color: #fbbf24;
-  }
-
-  &:hover {
-    transform: translateY(-4px) scale(1.03);
-    box-shadow: 0 18px 45px rgba(251,191,36,0.25);
-
-    .icon {
-      background: rgba(251,191,36,0.35);
-      color: #fff;
-    }
-  }
-`;
-
-/* ---------------- Component ---------------- */
-export default function Dashboard() {
+function DashboardContent() {
   const router = useRouter();
-  const isMod = true;
+  const [showScanner, setShowScanner] = useState(false);
+  const [user, setUser] = useState(null);
+  const [progress, setProgress] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      // Get user from localStorage first
+      const storedUser = getUser();
+      if (storedUser) {
+        setUser(storedUser);
+      }
+
+      // Fetch fresh user data and progress
+      const [userResponse, progressResponse] = await Promise.all([
+        getCurrentUser(),
+        getProgress(),
+      ]);
+
+      if (userResponse.ok) {
+        setUser(userResponse.data.user);
+      }
+
+      if (progressResponse.ok) {
+        setProgress(progressResponse.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to logout?")) {
+      logout();
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <Loader />
+      </div>
+    );
+  }
 
   return (
-    <Page>
-      <Overlay>
-        <Header>
-          <Compass size={48} className="animate-pulse" />
-          <TitleRow>
-            <h1>Dashboard</h1>
-          </TitleRow>
+    <div className="min-h-screen relative">
+      {/* Background image */}
+      <div
+        className="fixed inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage:
+            "url('https://images.unsplash.com/photo-1618385418700-35dc948cdeec')",
+        }}
+      />
 
-          <Subtitle className="text-amber-100/80 max-w-2xl mx-auto">
-            Scan QR codes to solve riddles and unveil the truth.
-          </Subtitle>
-        </Header>
+      {/* Overlay (hide when scanner is open) */}
+      {!showScanner && (
+        <div className="fixed inset-0 bg-black/65 backdrop-blur-sm" />
+      )}
 
-        <ActionButton onClick={() => router.push("/scan")}>
-          <div className="icon"><ScanLine size={24} /></div>
-          Scan QR
-        </ActionButton>
+      <div className="relative z-10 min-h-screen px-6 py-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <header className="mb-8 flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Compass className="size-10 text-amber-400" />
+                <h1 className="text-amber-100 text-3xl font-bold">
+                  Treasure Hunt
+                </h1>
+              </div>
+              <p className="text-amber-100/80">
+                Welcome, {user?.fullName || "Seeker"}!
+              </p>
+            </div>
 
-        {isMod && (
-          <>
-            <ActionButton onClick={() => router.push("/riddles")}>
-              <div className="icon"><Scroll size={24} /></div>
-              Riddle List
-            </ActionButton>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-900/60 hover:bg-red-900 text-red-200 rounded-lg transition-colors border border-red-700/50"
+            >
+              <LogOut className="size-4" />
+              Logout
+            </button>
+          </header>
 
-            <ActionButton onClick={() => router.push("/users")}>
-              <div className="icon"><Users size={24} /></div>
-              User List
-            </ActionButton>
-          </>
-        )}
-      </Overlay>
-    </Page>
+          {/* Main Scan Button - Centered and Large for Mobile */}
+          <div className="mb-8">
+            <div 
+              className="bg-linear-to-br from-amber-600/80 to-amber-800/80 rounded-2xl border border-amber-500/50 p-12 shadow-2xl transform hover:scale-105 transition-transform cursor-pointer active:scale-95"
+              onClick={() => setShowScanner(true)}
+            >
+              <ScanLine className="size-24 text-white mb-6 mx-auto" />
+              <h2 className="text-white text-3xl font-bold text-center mb-3">
+                Scan QR Code
+              </h2>
+              <p className="text-amber-100 text-center text-lg">
+                Find and scan QR codes to unlock riddles
+              </p>
+            </div>
+          </div>
+
+          {/* Scan Count - Always Show */}
+          <div className="bg-linear-to-br from-stone-900/60 to-stone-800/60 rounded-2xl border border-stone-700/50 p-6 shadow-2xl mb-6 text-center">
+            <ScanLine className="size-8 text-green-400 mb-2 mx-auto" />
+            <p className="text-amber-100 text-lg">
+              Total Scans: <span className="font-bold text-green-400">{progress?.gameSession?.totalScans || 0}</span>
+            </p>
+          </div>
+
+          {/* User Info Card */}
+          <div className="bg-linear-to-br from-stone-900/60 to-stone-800/60 rounded-2xl border border-stone-700/50 p-6 shadow-2xl">
+            <div className="flex items-center gap-4">
+              <User className="size-12 text-amber-400" />
+              <div className="flex-1">
+                <h3 className="text-amber-100 text-lg font-semibold">
+                  {user?.fullName}
+                </h3>
+                <p className="text-amber-200/70 text-sm">
+                  {user?.department}
+                </p>
+                <p className="text-amber-200/60 text-xs mt-1">
+                  {user?.email} • {user?.classRollNo}
+                </p>
+              </div>
+              {user?.isAdmin && (
+                <button
+                  onClick={() => router.push("/admin/dashboard")}
+                  className="px-4 py-2 bg-purple-900/60 hover:bg-purple-900 text-purple-200 rounded-lg transition-colors border border-purple-700/50"
+                >
+                  Admin Panel
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Admin-only Leaderboard Access */}
+          {user?.isAdmin && (
+            <div
+              className="mt-6 bg-linear-to-br from-purple-900/60 to-stone-900/60 rounded-2xl border border-purple-700/50 p-6 shadow-2xl cursor-pointer hover:border-purple-500 transition-colors"
+              onClick={() => router.push("/leaderboard")}
+            >
+              <Users className="size-12 text-purple-400 mb-4 mx-auto" />
+              <h2 className="text-purple-100 text-xl font-semibold mb-2 text-center">
+                Leaderboard
+              </h2>
+              <p className="text-purple-200/70 text-sm text-center">
+                View rankings and top performers
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Scanner modal */}
+      {showScanner && (
+        <Scan
+          onClose={() => {
+            setShowScanner(false);
+            fetchDashboardData(); // Refresh data after scan
+          }}
+        />
+      )}
+    </div>
   );
 }
+
+export default function Dashboard() {
+  return (
+    <ProtectedRoute>
+      <DashboardContent />
+    </ProtectedRoute>
+  );
+}
+

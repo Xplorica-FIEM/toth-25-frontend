@@ -1,13 +1,12 @@
-// pages/completeprofile.jsx
-"use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Compass, AlertCircle } from "lucide-react";
+import { completeProfile } from "@/utils/api";
+import { saveToken, saveUser } from "@/utils/auth";
+import { DEPARTMENTS } from "@/constants/departments";
 
 export default function CompleteProfilePage() {
   const router = useRouter();
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
@@ -20,10 +19,15 @@ export default function CompleteProfilePage() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    // Get email from localStorage or query param
+    // Get email from localStorage
     const storedEmail = localStorage.getItem("email");
-    if (storedEmail) setEmail(storedEmail);
-  }, []);
+    if (storedEmail) {
+      setEmail(storedEmail);
+    } else {
+      // If no email, redirect back to register
+      router.push("/register");
+    }
+  }, [router]);
 
   const handleCompleteProfile = async (e) => {
     e.preventDefault();
@@ -32,42 +36,44 @@ export default function CompleteProfilePage() {
 
     // Basic validation
     if (!fullName || !classRollNo || !department) {
-      setError("All fields except phone number are required");
+      setError("Full name, class roll number, and department are required");
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/complete-profile`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email, // include email from localStorage
-          fullName,
-          classRollNo,
-          phoneNumber,
-          department,
-        }),
-      });
+      const response = await completeProfile(
+        email,
+        fullName,
+        classRollNo,
+        phoneNumber,
+        department
+      );
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to complete profile");
+      if (!response.ok) {
+        throw new Error(response.data.error || "Failed to complete profile");
       }
 
-      setSuccess(data.message || "Profile completed successfully");
+      setSuccess(response.data.message || "Profile completed successfully!");
 
-      // Save token in localStorage and redirect
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-      }
+      // Extract token and user from response.data
+      const { token, user } = response.data;
 
+      // Save token and user
+      saveToken(token);
+      saveUser(user);
+
+      // Clear email from localStorage
+      localStorage.removeItem("email");
+
+      // Redirect based on admin status
       setTimeout(() => {
-        router.push("/homepg"); // redirect after success
+        if (user.isAdmin) {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/dashboard");
+        }
       }, 1500);
     } catch (err) {
       setError(err.message);
@@ -126,16 +132,23 @@ export default function CompleteProfilePage() {
             placeholder="Phone Number (optional)"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
+            maxLength={10}
             className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
-          <input
-            type="text"
-            placeholder="Department"
+
+          <select
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
             required
-            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
-          />
+            className="w-full p-3 rounded bg-black/40 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <option value="" disabled>Select Department</option>
+            {DEPARTMENTS.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
 
           <button
             type="submit"
@@ -149,3 +162,4 @@ export default function CompleteProfilePage() {
     </div>
   );
 }
+

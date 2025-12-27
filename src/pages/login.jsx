@@ -1,15 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Compass, AlertCircle } from "lucide-react";
+import { login } from "@/utils/api";
+import { saveToken, saveUser, isAuthenticated, isAdmin } from "@/utils/auth";
 
 export default function Login() {
   const router = useRouter();
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Redirect if already authenticated
+    if (isAuthenticated()) {
+      if (isAdmin()) {
+        router.replace("/admin");
+      } else {
+        router.replace("/dashboard");
+      }
+    }
+  }, [router]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -22,28 +34,33 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: form.email.trim().toLowerCase(),
-          password: form.password.trim(),
-        }),
-      });
+      const response = await login(
+        form.email.trim().toLowerCase(),
+        form.password.trim()
+      );
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (res.status === 400 || res.status === 401) {
-          setError("Wrong credentials. Please try again.");
+      if (!response.ok) {
+        if (response.status === 400 || response.status === 401) {
+          setError(response.data.error || "Wrong credentials. Please try again.");
         } else {
-          setError(data.message || "Login failed");
+          setError(response.data.error || response.data.message || "Login failed");
         }
         return;
       }
 
-      alert("Welcome back!");
-      router.push("/homepg"); // make sure this page exists
+      // Extract token and user from response.data
+      const { token, user } = response.data;
+
+      // Save token and user data
+      saveToken(token);
+      saveUser(user);
+
+      // Redirect based on admin status
+      if (user.isAdmin) {
+        router.push("/admin/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err) {
       console.error(err);
       setError("Server not reachable. Check connection.");
@@ -127,3 +144,4 @@ export default function Login() {
     </div>
   );
 }
+

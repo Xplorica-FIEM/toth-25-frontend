@@ -1,10 +1,9 @@
-// pages/register.jsx
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { Compass, AlertCircle } from "lucide-react";
+import { register } from "@/utils/api";
+import { isAuthenticated, isAdmin } from "@/utils/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -16,6 +15,17 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Redirect if already authenticated
+    if (isAuthenticated()) {
+      if (isAdmin()) {
+        router.replace("/admin/dashboard");
+      } else {
+        router.replace("/dashboard");
+      }
+    }
+  }, [router]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -39,30 +49,23 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
-    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/register`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: form.email.trim(),
-            password: form.password,
-            confirmPassword: form.confirmPassword,
-          }),
-        }
+      const response = await register(
+        form.email.trim(),
+        form.password,
+        form.confirmPassword
       );
-      const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "Registration failed");
+      if (!response.ok) {
+        throw new Error(response.data.error || "Registration failed");
+      }
+
+      // Store email for OTP verification
+      localStorage.setItem("email", form.email.trim());
 
       // Redirect to OTP verification page
-      router.push(
-        `/verifyotp?email=${encodeURIComponent(form.email.trim())}`
-      );
+      router.push(`/verifyotp?email=${encodeURIComponent(form.email.trim())}`);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -143,3 +146,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

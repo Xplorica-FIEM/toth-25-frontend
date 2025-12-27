@@ -1,7 +1,6 @@
-"use client"
-
-import Record from "./record";
+// pages/index.js - Redirect to landing page
+import Landing from "./landing";
 
 export default function Home() {
-  return <Record />;
+  return <Landing />;
 }

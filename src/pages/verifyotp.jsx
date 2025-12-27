@@ -1,19 +1,17 @@
-// pages/verifyotp.jsx
-"use client";
-
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Compass, AlertCircle } from "lucide-react";
+import { verifyOTP, resendOTP } from "@/utils/api";
 
 export default function VerifyOtp() {
   const router = useRouter();
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const { email: emailQuery } = router.query;
 
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -21,7 +19,7 @@ export default function VerifyOtp() {
     // Prefer email from query, fallback to localStorage
     if (emailQuery) {
       setEmail(emailQuery);
-      localStorage.setItem("email", emailQuery); // store email for complete profile
+      localStorage.setItem("email", emailQuery);
     } else {
       const storedEmail = localStorage.getItem("email");
       if (storedEmail) setEmail(storedEmail);
@@ -41,21 +39,15 @@ export default function VerifyOtp() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
-      });
+      const response = await verifyOTP(email, otp);
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "OTP verification failed");
+      if (!response.ok) {
+        throw new Error(response.data.error || "OTP verification failed");
       }
 
-      setSuccess(data.message || "Email verified successfully!");
+      setSuccess(response.data.message || "Email verified successfully!");
 
-      // Save email in localStorage (in case user refreshes page)
+      // Save email in localStorage for complete profile
       localStorage.setItem("email", email);
 
       // Move to complete profile page after 1.5s
@@ -66,6 +58,26 @@ export default function VerifyOtp() {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setError("");
+    setSuccess("");
+    setResending(true);
+
+    try {
+      const response = await resendOTP(email);
+
+      if (!response.ok) {
+        throw new Error(response.data.error || "Failed to resend OTP");
+      }
+
+      setSuccess("OTP resent successfully! Check your email.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResending(false);
     }
   };
 
@@ -125,7 +137,19 @@ export default function VerifyOtp() {
             {loading ? "Verifying..." : "Verify OTP"}
           </button>
         </form>
+
+        {/* Resend OTP */}
+        <div className="text-center">
+          <button
+            onClick={handleResend}
+            disabled={resending}
+            className="text-amber-300 hover:text-amber-100 text-sm disabled:text-amber-700"
+          >
+            {resending ? "Sending..." : "Resend OTP"}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
