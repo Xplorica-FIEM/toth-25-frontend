@@ -25,6 +25,7 @@ const nextConfig = {
       },
     ];
   },
+  turbopack: {},
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
