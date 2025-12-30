@@ -7,6 +7,7 @@ import { isAuthenticated, isAdmin } from "@/utils/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { email: emailParam } = router.query;
 
   const [form, setForm] = useState({
     email: "",
@@ -15,6 +16,7 @@ export default function RegisterPage() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showMessage, setShowMessage] = useState(false);
 
   useEffect(() => {
     // Redirect if already authenticated
@@ -25,7 +27,13 @@ export default function RegisterPage() {
         router.replace("/dashboard");
       }
     }
-  }, [router]);
+    
+    // Pre-fill email if coming from login redirect
+    if (emailParam && !form.email) {
+      setForm(prev => ({ ...prev, email: emailParam }));
+      setShowMessage(true);
+    }
+  }, [router, emailParam]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -85,9 +93,17 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        {/* Info Message */}
+        {showMessage && (
+          <div className="p-3 bg-blue-500/20 rounded text-blue-200 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle size={16} />
+            <span>No account found. Create one to continue!</span>
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
-          <div className="p-3 bg-red-500/20 rounded text-red-200 text-sm flex items-center gap-2">
+          <div className="p-3 bg-red-500/20 rounded text-red-200 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
             <AlertCircle size={16} />
             <span>{error}</span>
           </div>

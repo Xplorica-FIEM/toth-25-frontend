@@ -41,13 +41,42 @@ export default function Login() {
 
       if (!response.ok) {
         setLoading(false);
-        if (response.status === 400 || response.status === 401) {
-          setError(response.data?.error || "Wrong credentials. Please try again.");
-        } else if (response.status === 403) {
-          setError(response.data?.error || "Account not fully set up. Please complete registration.");
-        } else {
-          setError(response.data?.error || response.data?.message || "Login failed");
+        
+        // User doesn't exist - redirect to register
+        if (response.status === 404 && response.data?.action === "register") {
+          setError(response.data?.error || "No account found");
+          setTimeout(() => {
+            router.push(`/register?email=${encodeURIComponent(form.email)}`);
+          }, 2000);
+          return;
         }
+        
+        // Wrong password
+        if (response.status === 401) {
+          setError(response.data?.error || "Incorrect password. Please try again.");
+          return;
+        }
+        
+        // Email not verified
+        if (response.status === 403 && response.data?.action === "verify-email") {
+          setError("Please verify your email first. Redirecting...");
+          setTimeout(() => {
+            router.push(`/verifyotp?email=${encodeURIComponent(form.email)}`);
+          }, 2000);
+          return;
+        }
+        
+        // Profile not completed
+        if (response.status === 403 && response.data?.action === "complete-profile") {
+          setError("Please complete your profile. Redirecting...");
+          setTimeout(() => {
+            router.push(`/completeprofile?email=${encodeURIComponent(form.email)}`);
+          }, 2000);
+          return;
+        }
+        
+        // Other errors
+        setError(response.data?.error || response.data?.message || "Login failed");
         return;
       }
 
