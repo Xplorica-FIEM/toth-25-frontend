@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
 import { X, Sparkles, Globe } from "lucide-react"; // Added Globe icon
 import { scanQR } from "@/utils/api";
+// Example: import { verifyArtifactKey } from "@/utils/api";
 
 export default function Scan({ onClose }) {
   const router = useRouter();
@@ -92,6 +93,25 @@ export default function Scan({ onClose }) {
         return; // Halt internal processing
       }
 
+      const isValidArtifactFormat = (data) => {
+        // 1. Ensure it is a string
+        if (typeof data !== 'string') return false;
+
+        // 2. Split into components
+        const parts = data.split(':');
+
+        // 3. Validation Rules:
+        // - Must have exactly 2 parts (ID and Key)
+        // - The ID (first part) must be a valid number
+        // - The Key (second part) must not be empty
+        if (parts.length !== 2) return false;
+        
+        const [id, key] = parts;
+        if (isNaN(parseInt(id)) || !key) return false;
+
+        return true;
+        };
+
       // 🛡️ PROTOCOL 2: Internal Game Artifact Verification
       setLoadingMessage("Verifying Security Protocols...");
 
@@ -103,7 +123,38 @@ export default function Scan({ onClose }) {
 
       const verifiedRiddleId = response.data.riddle?.id || response.data.id;
 
+      if (!isValidArtifactFormat(qrData)) {
+        // If it's not a URL and not "ID:KEY", it is garbage data.
+        throw new Error("Unrecognized Data Format. Expected 'ID:KEY' or Valid URL.");
+      }
+
       if (verifiedRiddleId) {
+        const [artifactId, artifactKey] = qrData.split(':');
+        
+        
+        const verifyWithBackend = async (id, key) => {
+          try {
+            //mock api call
+            // const response = await api.verifyKey({ id, key });
+            // return response.data.success; 
+            
+            console.log(`Calling Backend to verify qr data-> ID: ${id}, Key: ${key}`);
+            await new Promise(resolve => setTimeout(resolve, 500)); // Simulating network delay
+            return true; // Mock response: Change to false to test error handling
+            // ⬆️ END MOCK BLOCK ⬆️
+
+          } catch (e) {
+            console.error("Backend verification error:", e);
+            return false;
+          }
+        };
+
+        // Execute the backend check
+        const isAuthorized = await verifyWithBackend(artifactId, artifactKey);
+
+        if (!isAuthorized) {
+          throw new Error("Access Denied: Invalid Key or Verification Failed.");
+        }
         await router.push(
           {
             pathname: '/viewRiddles',
