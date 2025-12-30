@@ -67,3 +67,4 @@ export const getRiddleAuthentication = (riddleNo) => {
   const riddle = riddles.find(r => r.id === riddleNo);
   return riddle ? riddle.isAuthenticated : false;
 };
+``

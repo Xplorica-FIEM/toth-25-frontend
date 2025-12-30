@@ -72,7 +72,7 @@ const Button = styled.span`
 
 const Dashboard2 = () => {
   const [isMounted, setIsMounted] = useState(false);
-  const [isMod, setIsMod] = useState(false); // Set to true for mod view
+  const [isMod, setIsMod] = useState(true); // Set to true for mod view
 
   useEffect(() => {
     setIsMounted(true);
