@@ -47,7 +47,9 @@ const fetchAPI = async (endpoint, options = {}) => {
   }
 
   // Handle 401 Unauthorized - token expired or invalid
-  if (response.status === 401) {
+  // Skip auto-redirect for auth endpoints (login, register, etc.)
+  const isAuthEndpoint = endpoint.startsWith('/api/auth/');
+  if (response.status === 401 && !isAuthEndpoint) {
     removeToken();
     if (typeof window !== 'undefined') {
       window.location.href = '/login';

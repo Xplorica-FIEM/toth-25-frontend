@@ -40,16 +40,25 @@ export default function Login() {
       );
 
       if (!response.ok) {
+        setLoading(false);
         if (response.status === 400 || response.status === 401) {
-          setError(response.data.error || "Wrong credentials. Please try again.");
+          setError(response.data?.error || "Wrong credentials. Please try again.");
+        } else if (response.status === 403) {
+          setError(response.data?.error || "Account not fully set up. Please complete registration.");
         } else {
-          setError(response.data.error || response.data.message || "Login failed");
+          setError(response.data?.error || response.data?.message || "Login failed");
         }
         return;
       }
 
       // Extract token and user from response.data
       const { token, user } = response.data;
+
+      if (!token || !user) {
+        setLoading(false);
+        setError("Invalid response from server");
+        return;
+      }
 
       // Save token and user data
       saveToken(token);
@@ -62,10 +71,9 @@ export default function Login() {
         router.push("/dashboard");
       }
     } catch (err) {
-      console.error(err);
-      setError("Server not reachable. Check connection.");
-    } finally {
+      console.error("Login error:", err);
       setLoading(false);
+      setError(err.message || "Server not reachable. Check connection.");
     }
   };
 
