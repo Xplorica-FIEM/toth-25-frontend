@@ -1,14 +1,17 @@
 import "@/styles/globals.css";
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
-import Loader from "./rohan/loadinganimation";
+import Loader from "./loadinganimation";
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const handleStart = () => setLoading(true);
+    const handleStart = (url) => {
+      if (url !== router.asPath) setLoading(true);
+    };
+
     const handleComplete = () => setLoading(false);
 
     router.events.on("routeChangeStart", handleStart);

@@ -1,22 +1,75 @@
-import { verifyRiddleKey, setRiddleAuthentication } from '../data/riddles';
+// utils/auth.js - Token and authentication management
 
 /**
- *  after getting and decrypting the key and riddle no from qr
- * call this function to authenticate the riddle.
- * Each riddle has independent authentication tracked in riddles.js
- * @param {number} riddleNo - The riddle number to authenticate
- * @param {string} decryptedKey - The decrypted key to verify
- * @returns {boolean} - Returns true if authentication successful, false otherwise
+ * Save JWT token to localStorage
  */
-export const authenticateRiddle = (riddleNo, decryptedKey) => {
-  const isValid = verifyRiddleKey(riddleNo, decryptedKey);
-  
-  if (isValid) {
-    setRiddleAuthentication(riddleNo, true);
-    console.log(`Riddle ${riddleNo} authenticated successfully!`);
-    return true;
-  } else {
-    console.log(`Invalid key for riddle ${riddleNo}`);
-    return false;
+export const saveToken = (token) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('token', token);
+  }
+};
+
+/**
+ * Get JWT token from localStorage
+ */
+export const getToken = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('token');
+  }
+  return null;
+};
+
+/**
+ * Remove JWT token from localStorage
+ */
+export const removeToken = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
+};
+
+/**
+ * Check if user is authenticated
+ */
+export const isAuthenticated = () => {
+  return !!getToken();
+};
+
+/**
+ * Save user data to localStorage
+ */
+export const saveUser = (user) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('user', JSON.stringify(user));
+  }
+};
+
+/**
+ * Get user data from localStorage
+ */
+export const getUser = () => {
+  if (typeof window !== 'undefined') {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  }
+  return null;
+};
+
+/**
+ * Check if user is admin
+ */
+export const isAdmin = () => {
+  const user = getUser();
+  return user && user.isAdmin === true;
+};
+
+/**
+ * Logout user - clear all auth data
+ */
+export const logout = () => {
+  removeToken();
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
   }
 };

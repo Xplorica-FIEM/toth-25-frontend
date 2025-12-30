@@ -1,0 +1,299 @@
+// utils/api.js - API wrapper functions with JWT token handling
+
+import { getToken, removeToken } from './auth';
+
+const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+
+/**
+ * Generic fetch wrapper with JWT token injection
+ */
+const fetchAPI = async (endpoint, options = {}) => {
+  const token = getToken();
+  
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+  };
+
+  let response;
+
+  // Try to fetch - catch network errors separately
+  try {
+    console.log(`🌐 Fetching: ${API_URL}${endpoint}`);
+    response = await fetch(`${API_URL}${endpoint}`, config);
+  } catch (networkError) {
+    console.error('❌ Network error - Backend not reachable:', networkError);
+    console.error('Backend URL:', API_URL);
+    throw new Error(`Backend server not reachable at ${API_URL}. Make sure it's running.`);
+  }
+
+  // Handle non-JSON responses safely
+  let data = null;
+  const contentType = response.headers.get('content-type');
+
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error('Failed to parse JSON:', jsonError);
+      data = null;
+    }
+  } else {
+    console.warn('Response is not JSON, content-type:', contentType);
+  }
+
+  // Handle 401 Unauthorized - token expired or invalid
+  if (response.status === 401) {
+    removeToken();
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    throw new Error('Session expired. Please login again.');
+  }
+
+  // Return response with data
+  return {
+    ok: response.ok,
+    status: response.status,
+    data,
+  };
+};
+
+// ==================== AUTH ENDPOINTS ====================
+
+/**
+ * Register new user (Step 1)
+ */
+export const register = async (email, password, confirmPassword) => {
+  return fetchAPI('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, confirmPassword }),
+  });
+};
+
+/**
+ * Verify OTP (Step 2)
+ */
+export const verifyOTP = async (email, otp) => {
+  return fetchAPI('/api/auth/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email, otp }),
+  });
+};
+
+/**
+ * Resend OTP
+ */
+export const resendOTP = async (email) => {
+  return fetchAPI('/api/auth/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+};
+
+/**
+ * Complete profile (Step 3)
+ */
+export const completeProfile = async (email, fullName, classRollNo, phoneNumber, department) => {
+  return fetchAPI('/api/auth/complete-profile', {
+    method: 'POST',
+    body: JSON.stringify({ email, fullName, classRollNo, phoneNumber, department }),
+  });
+};
+
+/**
+ * Login
+ */
+export const login = async (email, password) => {
+  return fetchAPI('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+};
+
+/**
+ * Get current user info
+ */
+export const getCurrentUser = async () => {
+  return fetchAPI('/api/auth/me');
+};
+
+// ==================== SCAN ENDPOINTS ====================
+
+/**
+ * Scan QR code and unlock riddle
+ */
+export const scanQR = async (riddleId) => {
+  return fetchAPI('/api/scan', {
+    method: 'POST',
+    body: JSON.stringify({ riddleId }),
+  });
+};
+
+// ==================== GAME ENDPOINTS ====================
+
+/**
+ * Get user game progress
+ */
+export const getProgress = async () => {
+  return fetchAPI('/api/game/progress');
+};
+
+/**
+ * Get user's scan history
+ */
+export const getMyScans = async () => {
+  return fetchAPI('/api/game/my-scans');
+};
+
+/**
+ * Complete game
+ */
+export const completeGame = async () => {
+  return fetchAPI('/api/game/complete', {
+    method: 'POST',
+  });
+};
+
+// ==================== LEADERBOARD ENDPOINTS ====================
+
+/**
+ * Get global leaderboard
+ */
+export const getLeaderboard = async (department = '') => {
+  const query = department ? `?department=${encodeURIComponent(department)}` : '';
+  return fetchAPI(`/api/leaderboard${query}`);
+};
+
+/**
+ * Get top performers
+ */
+export const getTopPerformers = async () => {
+  return fetchAPI('/api/leaderboard/top');
+};
+
+// ==================== USER ENDPOINTS ====================
+
+/**
+ * Get all users
+ */
+export const getUsers = async () => {
+  return fetchAPI('/api/users');
+};
+
+/**
+ * Get user by ID
+ */
+export const getUserById = async (userId) => {
+  return fetchAPI(`/api/users/${userId}`);
+};
+
+/**
+ * Delete user (Admin only)
+ */
+export const deleteUser = async (userId) => {
+  return fetchAPI(`/api/users/${userId}`, {
+    method: 'DELETE',
+  });
+};
+
+// ==================== ADMIN ENDPOINTS ====================
+
+/**
+ * Get all riddles (Admin)
+ */
+export const getAdminRiddles = async () => {
+  return fetchAPI('/api/admin/riddles');
+};
+
+/**
+ * Create riddle (Admin)
+ */
+export const createRiddle = async (riddleData) => {
+  return fetchAPI('/api/admin/riddles', {
+    method: 'POST',
+    body: JSON.stringify(riddleData),
+  });
+};
+
+/**
+ * Update riddle (Admin)
+ */
+export const updateRiddle = async (riddleId, riddleData) => {
+  return fetchAPI(`/api/admin/riddles/${riddleId}`, {
+    method: 'PUT',
+    body: JSON.stringify(riddleData),
+  });
+};
+
+/**
+ * Delete riddle (Admin)
+ */
+export const deleteRiddle = async (riddleId) => {
+  return fetchAPI(`/api/admin/riddles/${riddleId}`, {
+    method: 'DELETE',
+  });
+};
+
+/**
+ * Get all users (Admin)
+ */
+export const getAdminUsers = async () => {
+  return fetchAPI('/api/admin/users');
+};
+
+/**
+ * Toggle admin status (Admin)
+ */
+export const toggleAdminStatus = async (userId) => {
+  return fetchAPI(`/api/admin/users/${userId}/toggle-admin`, {
+    method: 'PUT',
+  });
+};
+
+/**
+ * Get admin stats
+ */
+export const getAdminStats = async () => {
+  return fetchAPI('/api/admin/stats');
+};
+
+export default {
+  // Auth
+  register,
+  verifyOTP,
+  resendOTP,
+  completeProfile,
+  login,
+  getCurrentUser,
+  
+  // Scan
+  scanQR,
+  
+  // Game
+  getProgress,
+  getMyScans,
+  completeGame,
+  
+  // Leaderboard
+  getLeaderboard,
+  getTopPerformers,
+  
+  // Users
+  getUsers,
+  getUserById,
+  deleteUser,
+  
+  // Admin
+  getAdminRiddles,
+  createRiddle,
+  updateRiddle,
+  deleteRiddle,
+  getAdminUsers,
+  toggleAdminStatus,
+  getAdminStats,
+};
