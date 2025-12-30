@@ -20,7 +20,13 @@ function AdminRiddlesContent() {
     setLoading(true);
     try {
       const riddlesRes = await getAdminRiddles();
-      if (riddlesRes.ok && riddlesRes.data.data) setRiddles(riddlesRes.data.data);
+      console.log("Riddles response:", riddlesRes);
+      if (riddlesRes.ok && riddlesRes.data.riddles) {
+        setRiddles(riddlesRes.data.riddles);
+      } else {
+        console.error("Failed to fetch riddles:", riddlesRes.data);
+        setRiddles([]);
+      }
     } catch (error) {
       console.error("Failed to fetch riddles:", error);
       setRiddles([]);

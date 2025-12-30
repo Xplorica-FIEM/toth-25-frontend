@@ -18,7 +18,13 @@ function AdminUsersContent() {
     setLoading(true);
     try {
       const usersRes = await getAdminUsers();
-      if (usersRes.ok && usersRes.data.data) setUsers(usersRes.data.data);
+      console.log("Users response:", usersRes);
+      if (usersRes.ok && usersRes.data.users) {
+        setUsers(usersRes.data.users);
+      } else {
+        console.error("Failed to fetch users:", usersRes.data);
+        setUsers([]);
+      }
     } catch (error) {
       console.error("Failed to fetch users:", error);
       setUsers([]);

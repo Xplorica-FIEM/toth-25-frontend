@@ -20,7 +20,13 @@ function AdminDashboardContent() {
     setLoading(true);
     try {
       const statsRes = await getAdminStats();
-      if (statsRes.ok) setStats(statsRes.data.data);
+      console.log("Stats response:", statsRes);
+      if (statsRes.ok) {
+        // Backend returns { success: true, stats: {...} }
+        setStats(statsRes.data.stats);
+      } else {
+        console.error("Failed to fetch stats:", statsRes.data);
+      }
     } catch (error) {
       console.error("Failed to fetch stats:", error);
     } finally {
@@ -62,7 +68,7 @@ function AdminDashboardContent() {
         <div className="bg-stone-900 border border-stone-800 rounded-xl p-6">
           <Trophy className="size-10 text-yellow-400 mb-3" />
           <p className="text-amber-200/70 text-sm mb-1">Active Players</p>
-          <p className="text-3xl font-bold text-amber-100">{stats?.activePlayers || 0}</p>
+          <p className="text-3xl font-bold text-amber-100">{stats?.completedGames || 0}</p>
         </div>
       </div>
 
