@@ -33,7 +33,7 @@ const ViewRiddles = () => {
         // Ensure you have a route like GET /api/riddles/:id or /api/scan/result/:id
         // Since this is a user view, ensure the endpoint validates if the user is allowed to see this.
         const token = Cookies.get('token');
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/riddles/${id}`, {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/admin/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -84,7 +84,7 @@ const ViewRiddles = () => {
     <RiddleTemplate 
       riddleContent={riddle?.puzzle || riddle?.encryptedPuzzle} // Handle depending on what API returns
       title={riddle?.title}
-      points={riddle?.points}
+      //points={riddle?.points}
       // Map the ID or Order Number to a specific background
       backgroundImage={getBackgroundImage(randomIntFromInterval(1, 8))}
       isAuthenticated={true} // We verified token in the fetch

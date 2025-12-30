@@ -120,7 +120,7 @@ const span=styled.span`
   color: red;
 `;
 
-const RiddleTemplate = ({ riddleContent, backgroundImage, isAuthenticated }) => {
+const RiddleTemplate = ({ riddleContent,title, backgroundImage, isAuthenticated }) => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [showError, setShowError] = useState(false);
