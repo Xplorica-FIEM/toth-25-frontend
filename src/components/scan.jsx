@@ -2,23 +2,41 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { X, Sparkles, Globe } from "lucide-react"; // Added Globe icon
-import { scanQR } from "@/utils/api";
-// Example: import { verifyArtifactKey } from "@/utils/api";
+import { X, Sparkles, Globe, ShieldAlert } from "lucide-react"; 
+import { scanQR, getRiddleKeys } from "@/utils/api";
 
 export default function Scan({ onClose }) {
   const router = useRouter();
   const videoRef = useRef(null);
   const readerRef = useRef(null);
 
+  // State to hold the valid keys fetched from server on mount
+  const [validKeys, setValidKeys] = useState([]); 
   const [error, setError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Processing...");
 
   useEffect(() => {
-    readerRef.current = new BrowserQRCodeReader();
+    //function to fetch valid Keys mapped to encryptionKeys
+    const loadSecurityProtocols = async () => {
+      try {
+        const response = await getRiddleKeys();
+        if (response.ok && response.data.keys) {
+          setValidKeys(response.data.keys); // Store [{id: 1, encryptionKey: "abc"}, ...]
+          console.log("DarkForge Protocols Loaded: Keys synchronized.");
+        }
+      } catch (err) {
+        console.error("Failed to load security protocols:", err);
+        setError("System Offline: Unable to sync keys.");
+      }
+    };
 
+    //fetch/load valid keys
+    loadSecurityProtocols();
+
+    // Initialize Camera
+    readerRef.current = new BrowserQRCodeReader();
     const timeout = setTimeout(() => {
       startScanning();
     }, 300);
@@ -70,7 +88,7 @@ export default function Scan({ onClose }) {
     }
   };
 
-  // 🛠️ DARKFORGE UTILITY: Signal Discriminator
+  // function to check if it is a meme link
   const isExternalUrl = (string) => {
     try {
       const url = new URL(string);
@@ -85,91 +103,50 @@ export default function Scan({ onClose }) {
     setLoading(true);
 
     try {
-      // 🚀 PROTOCOL 1: External Signal Detection
+      // check for memes
       if (isExternalUrl(qrData)) {
         setLoadingMessage("Redirecting to external sector...");
-        // Immediate redirection to the scanned URL
         window.location.href = qrData;
-        return; // Halt internal processing
+        return;
       }
 
-      const isValidArtifactFormat = (data) => {
-        // 1. Ensure it is a string
-        if (typeof data !== 'string') return false;
+      // check qrData against validKeys
+      // We check the 'validKeys' array we fetched on mount.
+      // qrData is expected to be the 'encryptionKey' string.
+      
+      setLoadingMessage("Analyzing Signal Signature...");
 
-        // 2. Split into components
-        const parts = data.split(':');
+      const match = validKeys.find(k => k.encryptionKey === qrData);
 
-        // 3. Validation Rules:
-        // - Must have exactly 2 parts (ID and Key)
-        // - The ID (first part) must be a valid number
-        // - The Key (second part) must not be empty
-        if (parts.length !== 2) return false;
-        
-        const [id, key] = parts;
-        if (isNaN(parseInt(id)) || !key) return false;
+      if (!match) {
+        // ACCESS DENIED (Local Check)
+        // We reject here instantly. No API call made for invalid keys.
+        throw new Error("Access Denied: Invalid Security Key.");
+      }
 
-        return true;
-        };
+      // ACCESS GRANTED (Local Check Passed)
+      // Now we call the backend to record the victory using the ID we found locally.
+      setLoadingMessage("Key Verified. Synchronizing with Core...");
 
-      // 🛡️ PROTOCOL 2: Internal Game Artifact Verification
-      setLoadingMessage("Verifying Security Protocols...");
-
-      const response = await scanQR(qrData);
+      const response = await scanQR(match.id);
 
       if (!response.ok) {
-        throw new Error(response.data.error || response.data.message || "Invalid QR Code");
+        throw new Error(response.data.error || response.data.message || "Claim Failed");
       }
 
-      const verifiedRiddleId = response.data.riddle?.id || response.data.id;
-
-      if (!isValidArtifactFormat(qrData)) {
-        // If it's not a URL and not "ID:KEY", it is garbage data.
-        throw new Error("Unrecognized Data Format. Expected 'ID:KEY' or Valid URL.");
-      }
-
-      if (verifiedRiddleId) {
-        const [artifactId, artifactKey] = qrData.split(':');
-        
-        
-        const verifyWithBackend = async (id, key) => {
-          try {
-            //mock api call
-            // const response = await api.verifyKey({ id, key });
-            // return response.data.success; 
-            
-            console.log(`Calling Backend to verify qr data-> ID: ${id}, Key: ${key}`);
-            await new Promise(resolve => setTimeout(resolve, 500)); // Simulating network delay
-            return true; // Mock response: Change to false to test error handling
-            // ⬆️ END MOCK BLOCK ⬆️
-
-          } catch (e) {
-            console.error("Backend verification error:", e);
-            return false;
-          }
-        };
-
-        // Execute the backend check
-        const isAuthorized = await verifyWithBackend(artifactId, artifactKey);
-
-        if (!isAuthorized) {
-          throw new Error("Access Denied: Invalid Key or Verification Failed.");
-        }
-        await router.push(
-          {
-            pathname: '/viewRiddles',
-            query: { id: verifiedRiddleId }
-          },
-          '/viewRiddles'
-        );
-        onClose();
-      } else {
-        throw new Error("System Error: ID not retrieved.");
-      }
+      //redirect to viewRiddles with the id
+      await router.push(
+        {
+          pathname: '/viewRiddles',
+          query: { id: match.id } // Pass the ID securely
+        },
+        '/viewRiddles' // Mask URL
+      );
+      onClose();
 
     } catch (err) {
       setError(err.message);
-      setLoading(false); // Only stop loading on error (redirect handles itself)
+      setLoading(false); // Only stop loading on error
     }
   };
 
@@ -224,8 +201,9 @@ export default function Scan({ onClose }) {
           )}
 
           {error && (
-            <div className="p-3 bg-red-900/50 text-red-200 rounded-lg text-center mb-4 border border-red-500/30">
-              {error}
+            <div className="p-3 bg-red-900/50 text-red-200 rounded-lg text-center mb-4 border border-red-500/30 flex items-center justify-center gap-2">
+              <ShieldAlert className="size-5" />
+              <span>{error}</span>
             </div>
           )}
 

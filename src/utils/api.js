@@ -125,16 +125,42 @@ export const getCurrentUser = async () => {
 };
 
 // ==================== SCAN ENDPOINTS ====================
+// ... existing imports and fetchAPI wrapper ...
+
+// ==================== SCAN ENDPOINTS ====================
 
 /**
- * Scan QR code and unlock riddle
+ * 1. GET KEYS (NEW)
+ * Fetches the list of valid { encryptionKey, id } pairs.
+ * Called by Scanner component on mount.
  */
+export const getRiddleKeys = async () => {
+  return fetchAPI('/api/scan/keys');
+};
+
+/**
+ * 2. CLAIM SCAN
+ * Sends the ID (found by local frontend match) to the backend.
+ * Note: Your backend expects { riddleId } in body.
+ */
+export const scanQR = async (riddleId) => {
+  return fetchAPI('/api/scan', {
+    method: 'POST',
+    body: JSON.stringify({ riddleId: parseInt(riddleId) }), // Ensure it is an Int
+  });
+};
+
+// ... existing game/leaderboard/user/admin endpoints ...
+/**
+ * Scan QR code and unlock riddle
+
 export const scanQR = async (riddleId) => {
   return fetchAPI('/api/scan', {
     method: 'POST',
     body: JSON.stringify({ riddleId }),
   });
 };
+*/
 
 // ==================== GAME ENDPOINTS ====================
 
