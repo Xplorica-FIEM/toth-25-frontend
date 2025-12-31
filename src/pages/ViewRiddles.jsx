@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios'; // We use this to fetch the data based on the ID
 import RiddleTemplate from '../components/RiddleTemplate';
-import Cookies from 'js-cookie';
 
 const ViewRiddles = () => {
   const router = useRouter();
@@ -14,36 +12,36 @@ const ViewRiddles = () => {
     // Wait for the router to be ready
     if (!router.isReady) return;
 
-    // 1. Extract the Hidden ID from the Router State
-    // This value comes from the secure redirection, NOT the URL string.
+    // Get the riddle ID from query
     const { id } = router.query;
 
     if (!id) {
-      // If the ID is missing (e.g., user refreshed the page or typed URL manually),
-      // we banish them back to the scanner or dashboard.
-      console.warn("No ID detected.");
-      router.push('/scan'); 
+      console.warn("No ID detected. Redirecting to dashboard.");
+      router.push('/dashboard');
       return;
     }
 
-    // 2. Fetch the Riddle Content from the Archives (API)
-    // We use the ID to get the fresh data from the server.
+    // Fetch riddle data from the API
     const fetchRiddle = async () => {
       try {
-        // Ensure you have a route like GET /api/riddles/:id or /api/scan/result/:id
-        // Since this is a user view, ensure the endpoint validates if the user is allowed to see this.
-        const token = Cookies.get('token');
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/admin/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/game/riddle/${id}`, {
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         });
 
-        if (response.data.success) {
-          setRiddle(response.data.riddle);
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          setRiddle(data.riddle);
         } else {
-          setError('Failed to retrieve riddle data.');
+          setError(data.error || 'Failed to retrieve riddle data.');
         }
       } catch (err) {
-        console.error("Transmission Intercepted:", err);
+        console.error("Error fetching riddle:", err);
         setError('Riddle not found or access denied.');
       } finally {
         setLoading(false);
@@ -52,13 +50,16 @@ const ViewRiddles = () => {
 
     fetchRiddle();
 
-  }, [router.isReady, router.query]);
+  }, [router.isReady, router.query, router]);
 
-  // Loading State (The Waiting Room)
+  // Loading State
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-black text-green-500 font-mono text-xl">
-        <div className="animate-pulse">Accessing Secure Archives...</div>
+      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-stone-900 via-amber-900/20 to-stone-900 text-amber-400 font-mono text-xl">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-amber-400 mx-auto mb-4"></div>
+          <p className="animate-pulse">Loading Riddle...</p>
+        </div>
       </div>
     );
   }
@@ -66,39 +67,40 @@ const ViewRiddles = () => {
   // Error State
   if (error) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-black text-red-500 font-mono">
-        <p className="text-2xl mb-4">⚠️ SYSTEM ERROR</p>
-        <p>{error}</p>
-        <button 
-          onClick={() => router.push('/scan')}
-          className="mt-6 px-4 py-2 border border-red-500 hover:bg-red-900 transition-colors"
-        >
-          Return to Scanner
-        </button>
+      <div className="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-stone-900 via-red-900/20 to-stone-900 text-red-400 font-mono">
+        <div className="text-center max-w-md mx-auto p-8">
+          <p className="text-4xl mb-4">⚠️</p>
+          <p className="text-2xl mb-4">ERROR</p>
+          <p className="text-lg mb-6">{error}</p>
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="px-6 py-3 bg-red-900/30 border border-red-500 hover:bg-red-900/50 transition-colors rounded-lg"
+          >
+            Return to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
 
-  // 3. Render the Riddle Template
+  // Render the Riddle
+  if (!riddle) {
+    return null;
+  }
+
   return (
     <RiddleTemplate 
-      riddleContent={riddle?.puzzle || riddle?.encryptedPuzzle} // Handle depending on what API returns
-      title={riddle?.title}
-      //points={riddle?.points}
-      // Map the ID or Order Number to a specific background
-      backgroundImage={getBackgroundImage(randomIntFromInterval(1, 8))}
-      isAuthenticated={true} // We verified token in the fetch
+      riddleContent={riddle.puzzleText}
+      title={riddle.riddleName}
+      orderNumber={riddle.orderNumber}
+      backgroundImage={getBackgroundImage(riddle.orderNumber)}
+      isAuthenticated={true}
     />
   );
 };
 
-// Helper for visual assets
-function randomIntFromInterval(min, max) { // min and max included 
-  return Math.floor(Math.random() * (max - min + 1) + min);
-}
-
+// Helper for background images
 const getBackgroundImage = (orderNumber) => {
-  // Mapping order numbers to assets
   const backgrounds = {
     1: '/toth1.png',
     2: '/toth2.png',
@@ -109,7 +111,7 @@ const getBackgroundImage = (orderNumber) => {
     7: '/toth7.png',
     8: '/toth8.png'  
   };
-  return backgrounds[orderNumber] || '/assets/riddles/default.jpg';
+  return backgrounds[orderNumber] || '/toth1.png';
 };
 
 export default ViewRiddles;
