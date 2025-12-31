@@ -62,12 +62,14 @@ export default function Scan({ onClose }) {
         return;
       }
 
-      const backCamera =
-        devices.find((d) => d.label.toLowerCase().includes("back")) ||
-        devices[0];
+      // For desktop, prefer front camera; for mobile, prefer back camera
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const preferredCamera = isMobile
+        ? devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0]
+        : devices.find((d) => d.label.toLowerCase().includes("front")) || devices[0];
 
       await readerRef.current.decodeFromVideoDevice(
-        backCamera.deviceId,
+        preferredCamera.deviceId,
         videoRef.current,
         (result, err) => {
           if (result) {
@@ -179,9 +181,12 @@ export default function Scan({ onClose }) {
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-[300px] object-cover"
+                className="w-full h-[400px] md:h-[500px] object-cover"
               />
-              <div className="absolute inset-0 border-2 border-amber-500/30 m-8 rounded-lg pointer-events-none"></div>
+              <div className="absolute inset-0 border-2 border-amber-500/30 m-8 md:m-16 rounded-lg pointer-events-none"></div>
+              <p className="absolute bottom-4 left-0 right-0 text-center text-amber-300 text-sm">
+                Position QR code within the frame
+              </p>
             </div>
           )}
 
