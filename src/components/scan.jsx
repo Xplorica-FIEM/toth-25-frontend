@@ -3,38 +3,19 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
 import { X, Sparkles, Globe, ShieldAlert } from "lucide-react"; 
-import { scanQR, getRiddleKeys } from "@/utils/api";
+import { scanQR } from "@/utils/api";
 
 export default function Scan({ onClose }) {
   const router = useRouter();
   const videoRef = useRef(null);
   const readerRef = useRef(null);
 
-  // State to hold the valid keys fetched from server on mount
-  const [validKeys, setValidKeys] = useState([]); 
   const [error, setError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Processing...");
 
   useEffect(() => {
-    //function to fetch valid Keys mapped to encryptionKeys
-    const loadSecurityProtocols = async () => {
-      try {
-        const response = await getRiddleKeys();
-        if (response.ok && response.data.keys) {
-          setValidKeys(response.data.keys); // Store [{id: 1, encryptionKey: "abc"}, ...]
-          console.log("DarkForge Protocols Loaded: Keys synchronized.");
-        }
-      } catch (err) {
-        console.error("Failed to load security protocols:", err);
-        setError("System Offline: Unable to sync keys.");
-      }
-    };
-
-    //fetch/load valid keys
-    loadSecurityProtocols();
-
     // Initialize Camera
     readerRef.current = new BrowserQRCodeReader();
     const timeout = setTimeout(() => {
@@ -62,12 +43,14 @@ export default function Scan({ onClose }) {
         return;
       }
 
-      const backCamera =
-        devices.find((d) => d.label.toLowerCase().includes("back")) ||
-        devices[0];
+      // For desktop, prefer front camera; for mobile, prefer back camera
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const preferredCamera = isMobile
+        ? devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0]
+        : devices.find((d) => d.label.toLowerCase().includes("front")) || devices[0];
 
       await readerRef.current.decodeFromVideoDevice(
-        backCamera.deviceId,
+        preferredCamera.deviceId,
         videoRef.current,
         (result, err) => {
           if (result) {
@@ -103,50 +86,42 @@ export default function Scan({ onClose }) {
     setLoading(true);
 
     try {
-      // check for memes
+      // Check for external URLs (easter eggs/memes)
       if (isExternalUrl(qrData)) {
         setLoadingMessage("Redirecting to external sector...");
         window.location.href = qrData;
         return;
       }
 
-      // check qrData against validKeys
-      // We check the 'validKeys' array we fetched on mount.
-      // qrData is expected to be the 'encryptionKey' string.
-      
-      setLoadingMessage("Analyzing Signal Signature...");
+      // Send encrypted qrData to backend for decryption and verification
+      setLoadingMessage("Verifying QR code...");
 
-      const match = validKeys.find(k => k.encryptionKey === qrData);
-
-      if (!match) {
-        // ACCESS DENIED (Local Check)
-        // We reject here instantly. No API call made for invalid keys.
-        throw new Error("Access Denied: Invalid Security Key.");
-      }
-
-      // ACCESS GRANTED (Local Check Passed)
-      // Now we call the backend to record the victory using the ID we found locally.
-      setLoadingMessage("Key Verified. Synchronizing with Core...");
-
-      const response = await scanQR(match.id);
+      const response = await scanQR(qrData);
 
       if (!response.ok) {
-        throw new Error(response.data.error || response.data.message || "Claim Failed");
+        throw new Error(response.data.error || response.data.message || "Scan failed");
       }
 
-      //redirect to viewRiddles with the id
+      // Get riddleId from response
+      const riddleId = response.data.riddle?.id;
+
+      if (!riddleId) {
+        throw new Error("Invalid response from server");
+      }
+
+      // Redirect to view riddle
       await router.push(
         {
-          pathname: '/viewRiddles',
-          query: { id: match.id } // Pass the ID securely
+          pathname: '/viewriddles',
+          query: { id: riddleId }
         },
-        '/viewRiddles' // Mask URL
+        '/viewriddles'
       );
       onClose();
 
     } catch (err) {
       setError(err.message);
-      setLoading(false); // Only stop loading on error
+      setLoading(false);
     }
   };
 
@@ -179,9 +154,12 @@ export default function Scan({ onClose }) {
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-[300px] object-cover"
+                className="w-full h-[400px] md:h-[500px] object-cover"
               />
-              <div className="absolute inset-0 border-2 border-amber-500/30 m-8 rounded-lg pointer-events-none"></div>
+              <div className="absolute inset-0 border-2 border-amber-500/30 m-8 md:m-16 rounded-lg pointer-events-none"></div>
+              <p className="absolute bottom-4 left-0 right-0 text-center text-amber-300 text-sm">
+                Position QR code within the frame
+              </p>
             </div>
           )}
 

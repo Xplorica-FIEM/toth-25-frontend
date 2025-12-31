@@ -134,33 +134,15 @@ export const getCurrentUser = async () => {
  * Fetches the list of valid { encryptionKey, id } pairs.
  * Called by Scanner component on mount.
  */
-export const getRiddleKeys = async () => {
-  return fetchAPI('/api/scan/keys');
-};
-
 /**
- * 2. CLAIM SCAN
- * Sends the ID (found by local frontend match) to the backend.
- * Note: Your backend expects { riddleId } in body.
+ * Scan QR code - sends encrypted qrData to backend
  */
-export const scanQR = async (riddleId) => {
+export const scanQR = async (qrData) => {
   return fetchAPI('/api/scan', {
     method: 'POST',
-    body: JSON.stringify({ riddleId: parseInt(riddleId) }), // Ensure it is an Int
+    body: JSON.stringify({ qrData }),
   });
 };
-
-// ... existing game/leaderboard/user/admin endpoints ...
-/**
- * Scan QR code and unlock riddle
-
-export const scanQR = async (riddleId) => {
-  return fetchAPI('/api/scan', {
-    method: 'POST',
-    body: JSON.stringify({ riddleId }),
-  });
-};
-*/
 
 // ==================== GAME ENDPOINTS ====================
 
