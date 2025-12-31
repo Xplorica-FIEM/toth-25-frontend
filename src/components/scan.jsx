@@ -112,10 +112,10 @@ export default function Scan({ onClose }) {
       // Redirect to view riddle
       await router.push(
         {
-          pathname: '/viewRiddles',
+          pathname: '/viewriddles',
           query: { id: riddleId }
         },
-        '/viewRiddles'
+        '/viewriddles'
       );
       onClose();
 
