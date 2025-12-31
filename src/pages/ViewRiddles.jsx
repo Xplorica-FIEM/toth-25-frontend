@@ -82,7 +82,8 @@ const ViewRiddles = () => {
   // 3. Render the Riddle Template
   return (
     <RiddleTemplate 
-      riddleContent={riddle?.puzzle || riddle?.encryptedPuzzle} // Handle depending on what API returns
+      riddleContent={riddle?.puzzleText || riddle?.encryptedPuzzle} // Handle depending on what API returns
+      //not used rn
       title={riddle?.title}
       //points={riddle?.points}
       // Map the ID or Order Number to a specific background
