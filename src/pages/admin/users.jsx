@@ -4,7 +4,6 @@ import { Trash2, Shield } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
 import { getAdminUsers, deleteUser, toggleAdminStatus } from "@/utils/api";
-import Loader from "../loadinganimation";
 
 function AdminUsersContent() {
   const [users, setUsers] = useState([]);
@@ -58,16 +57,6 @@ function AdminUsersContent() {
       alert("Failed to update admin status");
     }
   };
-
-  if (loading) {
-    return (
-      <AdminLayout activeTab="users">
-        <div className="flex items-center justify-center h-96">
-          <Loader />
-        </div>
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout activeTab="users">

@@ -20,7 +20,6 @@ import {
   deleteUser,
   toggleAdminStatus,
 } from "@/utils/api";
-import Loader from "../loadinganimation";
 
 function AdminDashboardContent() {
   const router = useRouter();
@@ -103,14 +102,6 @@ function AdminDashboardContent() {
       alert("Error updating admin status");
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <Loader />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen relative">

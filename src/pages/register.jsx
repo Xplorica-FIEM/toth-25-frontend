@@ -82,14 +82,27 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black/80 px-6">
-      <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl shadow-xl space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-black px-6 relative">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2070')",
+          filter: "brightness(0.4)"
+        }}
+      />
+      
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-black/40" />
+      
+      {/* Content */}
+      <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl shadow-xl space-y-6 relative z-10 backdrop-blur-sm">
         {/* Header */}
         <div className="text-center">
           <Compass className="mx-auto text-amber-400" size={48} />
           <h1 className="text-amber-100 text-2xl mt-2">Create an Account</h1>
           <p className="text-amber-200/70 text-sm mt-2">
-            Sign up to unlock the realm
+            Sign up to step into the world of mysteries!
           </p>
         </div>
 

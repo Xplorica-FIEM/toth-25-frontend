@@ -1,12 +1,11 @@
 // pages/dashboard.jsx - Main dashboard with user stats
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
-import { Compass, ScanLine, Trophy, Users, LogOut, User, TrendingUp } from "lucide-react";
+import { Compass, ScanLine, Trophy, Users, LogOut, User, TrendingUp, ChevronDown, Shield } from "lucide-react";
 import dynamic from "next/dynamic";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getCurrentUser, getProgress } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
-import Loader from "./loadinganimation";
 
 const Scan = dynamic(() => import("../components/scan"), {
   ssr: false,
@@ -18,12 +17,30 @@ function DashboardContent() {
   const [user, setUser] = useState(null);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    fetchDashboardData();
+    // Only fetch once on mount
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      fetchDashboardData();
+    }
+
+    // Close profile menu when clicking outside
+    const handleClickOutside = (event) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchDashboardData = async () => {
+    setLoading(true);
     try {
       // Get user from localStorage first
       const storedUser = getUser();
@@ -42,7 +59,7 @@ function DashboardContent() {
       }
 
       if (progressResponse.ok) {
-        setProgress(progressResponse.data.data);
+        setProgress(progressResponse.data.progress);
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
@@ -56,14 +73,6 @@ function DashboardContent() {
       logout();
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <Loader />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen relative">
@@ -81,96 +90,145 @@ function DashboardContent() {
         <div className="fixed inset-0 bg-black/65 backdrop-blur-sm" />
       )}
 
-      <div className="relative z-10 min-h-screen px-6 py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <header className="mb-8 flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Compass className="size-10 text-amber-400" />
-                <h1 className="text-amber-100 text-3xl font-bold">
-                  TOTH-25
-                </h1>
+      <div className="relative z-10 min-h-screen">
+        {/* Top Navigation Bar */}
+        <nav className="bg-stone-900/90 backdrop-blur-md border-b border-stone-700/50 sticky top-0 z-20">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              {/* Logo */}
+              <div className="flex items-center gap-3">
+                <Compass className="size-8 text-amber-400" />
+                <h1 className="text-amber-100 text-2xl font-bold">TOTH-25</h1>
               </div>
-              <p className="text-amber-100/80">
-                Welcome, {user?.fullName || "Seeker"}!
-              </p>
-            </div>
 
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-900/60 hover:bg-red-900 text-red-200 rounded-lg transition-colors border border-red-700/50"
-            >
-              <LogOut className="size-4" />
-              Logout
-            </button>
-          </header>
-
-          {/* Main Scan Button - Centered and Large for Mobile */}
-          <div className="mb-8">
-            <div 
-              className="bg-linear-to-br from-amber-600/80 to-amber-800/80 rounded-2xl border border-amber-500/50 p-12 shadow-2xl transform hover:scale-105 transition-transform cursor-pointer active:scale-95"
-              onClick={() => setShowScanner(true)}
-            >
-              <ScanLine className="size-24 text-white mb-6 mx-auto" />
-              <h2 className="text-white text-3xl font-bold text-center mb-3">
-                Scan QR Code
-              </h2>
-              <p className="text-amber-100 text-center text-lg">
-                Find and scan QR codes to unlock riddles
-              </p>
-            </div>
-          </div>
-
-          {/* Scan Count - Always Show */}
-          <div className="bg-linear-to-br from-stone-900/60 to-stone-800/60 rounded-2xl border border-stone-700/50 p-6 shadow-2xl mb-6 text-center">
-            <ScanLine className="size-8 text-green-400 mb-2 mx-auto" />
-            <p className="text-amber-100 text-lg">
-              Total Scans: <span className="font-bold text-green-400">{progress?.gameSession?.totalScans || 0}</span>
-            </p>
-          </div>
-
-          {/* User Info Card */}
-          <div className="bg-linear-to-br from-stone-900/60 to-stone-800/60 rounded-2xl border border-stone-700/50 p-6 shadow-2xl">
-            <div className="flex items-center gap-4">
-              <User className="size-12 text-amber-400" />
-              <div className="flex-1">
-                <h3 className="text-amber-100 text-lg font-semibold">
-                  {user?.fullName}
-                </h3>
-                <p className="text-amber-200/70 text-sm">
-                  {user?.department}
-                </p>
-                <p className="text-amber-200/60 text-xs mt-1">
-                  {user?.email} • {user?.classRollNo}
-                </p>
-              </div>
-              {user?.isAdmin && (
+              {/* Profile Section */}
+              <div className="relative" ref={profileMenuRef}>
                 <button
-                  onClick={() => router.push("/admin/dashboard")}
-                  className="px-4 py-2 bg-purple-900/60 hover:bg-purple-900 text-purple-200 rounded-lg transition-colors border border-purple-700/50"
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="flex items-center gap-3 px-4 py-2 bg-stone-800/60 hover:bg-stone-800 rounded-lg transition-colors border border-stone-700/50"
                 >
-                  Admin Panel
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-600 rounded-full flex items-center justify-center">
+                      <User className="size-5 text-white" />
+                    </div>
+                    <div className="text-left hidden sm:block">
+                      <p className="text-amber-100 text-sm font-semibold">
+                        {user?.fullName}
+                      </p>
+                      <p className="text-amber-200/60 text-xs">
+                        {user?.department}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronDown className={`size-4 text-amber-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
                 </button>
-              )}
+
+                {/* Dropdown Menu */}
+                {showProfileMenu && (
+                  <div className="absolute right-0 mt-2 w-72 bg-stone-900/95 backdrop-blur-md border border-stone-700/50 rounded-lg shadow-2xl overflow-hidden">
+                    {/* User Info Header */}
+                    <div className="px-4 py-3 bg-stone-800/50 border-b border-stone-700/50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-amber-600 rounded-full flex items-center justify-center">
+                          <User className="size-6 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-amber-100 font-semibold truncate">
+                            {user?.fullName}
+                          </p>
+                          <p className="text-amber-200/70 text-sm truncate">
+                            {user?.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Profile Details */}
+                    <div className="px-4 py-3 space-y-2 border-b border-stone-700/50">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-amber-200/70">Department:</span>
+                        <span className="text-amber-100 font-medium">{user?.department}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-amber-200/70">Roll No:</span>
+                        <span className="text-amber-100 font-medium">{user?.classRollNo}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-amber-200/70">Total Scans:</span>
+                        <span className="text-green-400 font-bold">{progress?.totalScans || 0}</span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="p-2">
+                      {user?.isAdmin && (
+                        <>
+                          <button
+                            onClick={() => {
+                              router.push("/admin/dashboard");
+                              setShowProfileMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-purple-200 hover:bg-purple-900/40 rounded-lg transition-colors"
+                          >
+                            <Shield className="size-4" />
+                            <span className="text-sm">Admin Panel</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              router.push("/leaderboard");
+                              setShowProfileMenu(false);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-purple-200 hover:bg-purple-900/40 rounded-lg transition-colors"
+                          >
+                            <Users className="size-4" />
+                            <span className="text-sm">Leaderboard</span>
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-red-200 hover:bg-red-900/40 rounded-lg transition-colors"
+                      >
+                        <LogOut className="size-4" />
+                        <span className="text-sm">Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+        </nav>
 
-          {/* Admin-only Leaderboard Access */}
-          {user?.isAdmin && (
-            <div
-              className="mt-6 bg-linear-to-br from-purple-900/60 to-stone-900/60 rounded-2xl border border-purple-700/50 p-6 shadow-2xl cursor-pointer hover:border-purple-500 transition-colors"
-              onClick={() => router.push("/leaderboard")}
-            >
-              <Users className="size-12 text-purple-400 mb-4 mx-auto" />
-              <h2 className="text-purple-100 text-xl font-semibold mb-2 text-center">
-                Leaderboard
+        {/* Main Content */}
+        <div className="px-6 py-8">
+          <div className="max-w-2xl mx-auto">
+            {/* Welcome Message */}
+            <div className="mb-8">
+              <h2 className="text-amber-100 text-2xl font-semibold mb-2">
+                Welcome back, {user?.fullName?.split(' ')[0] || "Seeker"}! 👋
               </h2>
-              <p className="text-purple-200/70 text-sm text-center">
-                View rankings and top performers
+              <p className="text-amber-100/70">
+                Ready to continue your treasure hunt adventure?
               </p>
             </div>
-          )}
+
+            {/* Main Scan Button - Centered and Large for Mobile */}
+            <div className="mb-8">
+              <div 
+                className="bg-linear-to-br from-amber-600/80 to-amber-800/80 rounded-2xl border border-amber-500/50 p-12 shadow-2xl transform hover:scale-105 transition-transform cursor-pointer active:scale-95"
+                onClick={() => setShowScanner(true)}
+              >
+                <ScanLine className="size-24 text-white mb-6 mx-auto" />
+                <h2 className="text-white text-3xl font-bold text-center mb-3">
+                  Scan QR Code
+                </h2>
+                <p className="text-amber-100 text-center text-lg">
+                  Find and scan QR codes to unlock riddles
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

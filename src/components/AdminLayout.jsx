@@ -1,5 +1,5 @@
 // components/AdminLayout.jsx - Shared admin layout with sidebar
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import {
   LayoutDashboard,
@@ -16,8 +16,24 @@ import { logout, getUser } from "@/utils/auth";
 
 export default function AdminLayout({ children, activeTab }) {
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const currentUser = getUser();
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Default closed on mobile
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setCurrentUser(getUser());
+    
+    // Detect mobile on mount and resize
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (!mobile) setSidebarOpen(true); // Auto-open on desktop
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
@@ -34,12 +50,24 @@ export default function AdminLayout({ children, activeTab }) {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-950 flex">
+    <div className="min-h-screen bg-stone-950 flex relative">
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } bg-stone-900 border-r border-stone-800 transition-all duration-300 flex flex-col`}
+          isMobile
+            ? `fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ${
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+              }`
+            : sidebarOpen ? "w-64" : "w-20"
+        } bg-stone-900 border-r border-stone-800 flex flex-col`}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-stone-800 flex items-center justify-between">
@@ -70,14 +98,17 @@ export default function AdminLayout({ children, activeTab }) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                onClick={() => router.push(item.path)}
+                onClick={() => {
+                  router.push(item.path);
+                  if (isMobile) setSidebarOpen(false); // Close sidebar on mobile after navigation
+                }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
                     ? "bg-amber-600 text-white"
@@ -112,8 +143,21 @@ export default function AdminLayout({ children, activeTab }) {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-8 max-w-7xl mx-auto">{children}</div>
+      <main className={`flex-1 overflow-auto ${isMobile ? 'w-full' : ''}`}>
+        {/* Mobile Menu Button */}
+        {isMobile && !sidebarOpen && (
+          <div className="sticky top-0 z-30 bg-stone-900/95 backdrop-blur-sm border-b border-stone-800 p-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex items-center gap-2 text-amber-200 hover:text-amber-100"
+            >
+              <Menu className="size-6" />
+              <span className="font-medium">Menu</span>
+            </button>
+          </div>
+        )}
+        
+        <div className="p-4 md:p-8 max-w-7xl mx-auto">{children}</div>
       </main>
     </div>
   );

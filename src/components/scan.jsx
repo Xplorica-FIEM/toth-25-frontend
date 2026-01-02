@@ -2,20 +2,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { X, Sparkles, Globe, ShieldAlert } from "lucide-react"; 
+import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor } from "lucide-react"; 
 import { scanQR } from "@/utils/api";
 
 export default function Scan({ onClose }) {
   const router = useRouter();
   const videoRef = useRef(null);
   const readerRef = useRef(null);
+  const hasScannedRef = useRef(false);
 
   const [error, setError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Processing...");
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const videoStreamRef = useRef(null);
 
   useEffect(() => {
+    // Detect if mobile device
+    setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    
     // Initialize Camera
     readerRef.current = new BrowserQRCodeReader();
     const timeout = setTimeout(() => {
@@ -43,17 +50,33 @@ export default function Scan({ onClose }) {
         return;
       }
 
-      // For desktop, prefer front camera; for mobile, prefer back camera
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-      const preferredCamera = isMobile
-        ? devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0]
-        : devices.find((d) => d.label.toLowerCase().includes("front")) || devices[0];
+      // Select camera based on device type
+      let selectedCamera;
+      if (isMobile) {
+        // Mobile: prefer back camera
+        selectedCamera = devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0];
+      } else {
+        // Desktop: prefer any external camera, then front camera
+        selectedCamera = devices.find((d) => !d.label.toLowerCase().includes("integrated")) || devices[0];
+      }
+
+      // Enhanced video constraints
+      const videoConstraints = {
+        deviceId: selectedCamera.deviceId,
+        facingMode: isMobile ? "environment" : "user",
+        width: { min: 640, ideal: 1920, max: 1920 },
+        height: { min: 480, ideal: 1080, max: 1080 },
+        aspectRatio: { ideal: 16/9 },
+        frameRate: { ideal: 30 },
+        focusMode: isMobile ? "continuous" : "auto",
+      };
 
       await readerRef.current.decodeFromVideoDevice(
-        preferredCamera.deviceId,
+        selectedCamera.deviceId,
         videoRef.current,
         (result, err) => {
-          if (result) {
+          if (result && !hasScannedRef.current) {
+            hasScannedRef.current = true;
             const text = result.getText();
             setIsScanning(false);
             stopScanning();
@@ -64,6 +87,11 @@ export default function Scan({ onClose }) {
           }
         }
       );
+
+      // Store video stream for torch control
+      if (videoRef.current && videoRef.current.srcObject) {
+        videoStreamRef.current = videoRef.current.srcObject;
+      }
     } catch (e) {
       console.error(e);
       setError("Camera permission denied");
@@ -102,12 +130,24 @@ export default function Scan({ onClose }) {
         throw new Error(response.data.error || response.data.message || "Scan failed");
       }
 
-      // Get riddleId from response
-      const riddleId = response.data.riddle?.id;
+      // Get riddle data from response
+      const riddleData = response.data.riddle;
+      const isFirstScan = riddleData?.isFirstScan;
+      const riddleId = riddleData?.id;
 
       if (!riddleId) {
         throw new Error("Invalid response from server");
       }
+
+      // Show different loading message based on whether it's a duplicate scan
+      if (!isFirstScan) {
+        setLoadingMessage("Already unlocked! Redirecting to riddle...");
+      } else {
+        setLoadingMessage("New riddle unlocked! +100 points");
+      }
+
+      // Brief delay to show the message
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Redirect to view riddle
       await router.push(
@@ -129,6 +169,27 @@ export default function Scan({ onClose }) {
     try {
       readerRef.current?.reset();
     } catch {}
+  };
+
+  const toggleTorch = async () => {
+    if (!videoStreamRef.current) return;
+    
+    try {
+      const track = videoStreamRef.current.getVideoTracks()[0];
+      const capabilities = track.getCapabilities();
+      
+      if (capabilities.torch) {
+        await track.applyConstraints({
+          advanced: [{ torch: !torchEnabled }]
+        });
+        setTorchEnabled(!torchEnabled);
+      } else {
+        setError("Flash not supported on this device");
+        setTimeout(() => setError(""), 2000);
+      }
+    } catch (err) {
+      console.error("Torch error:", err);
+    }
   };
 
   return (
@@ -156,9 +217,56 @@ export default function Scan({ onClose }) {
                 muted
                 className="w-full h-[400px] md:h-[500px] object-cover"
               />
-              <div className="absolute inset-0 border-2 border-amber-500/30 m-8 md:m-16 rounded-lg pointer-events-none"></div>
-              <p className="absolute bottom-4 left-0 right-0 text-center text-amber-300 text-sm">
-                Position QR code within the frame
+              
+              {/* Scanning frame with corners */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="relative w-64 h-64 md:w-80 md:h-80">
+                  {/* Corner decorations */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-500"></div>
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-500"></div>
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-500"></div>
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-500"></div>
+                  
+                  {/* Animated scanning line */}
+                  {isScanning && (
+                    <div className="absolute inset-0 overflow-hidden">
+                      <div className="h-1 w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-scan-line shadow-[0_0_10px_rgba(251,191,36,0.8)]"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Instructions overlay */}
+              <div className="absolute top-4 left-0 right-0 text-center">
+                <div className="inline-flex items-center gap-2 bg-black/80 px-4 py-2 rounded-lg backdrop-blur-sm border border-amber-500/30">
+                  {isMobile ? <Smartphone className="size-4 text-amber-400" /> : <Monitor className="size-4 text-amber-400" />}
+                  <p className="text-amber-300 text-sm font-medium">Hold QR code steady within frame</p>
+                </div>
+              </div>
+              
+              {/* Torch button for mobile */}
+              {isMobile && (
+                <button
+                  onClick={toggleTorch}
+                  className="absolute bottom-4 right-4 p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all z-10"
+                >
+                  {torchEnabled ? (
+                    <Flashlight className="size-5 text-amber-400" />
+                  ) : (
+                    <FlashlightOff className="size-5 text-amber-300" />
+                  )}
+                </button>
+              )}
+              
+              {/* Tips */}
+              <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded-lg backdrop-blur-sm border border-amber-500/20">
+                <p className="text-amber-400/70 text-xs">
+                  {isMobile ? "💡 Use good lighting" : "💡 Move QR closer to camera"}
+                </p>
+              </div>
+              
+              <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-amber-300 text-sm font-semibold bg-black/70 px-4 py-2 rounded-lg backdrop-blur-sm">
+                {isScanning ? "Scanning..." : "Ready to scan"}
               </p>
             </div>
           )}
@@ -195,7 +303,10 @@ export default function Scan({ onClose }) {
 
             {!loading && (
               <button
-                onClick={startScanning}
+                onClick={() => {
+                  hasScannedRef.current = false;
+                  startScanning();
+                }}
                 disabled={isScanning}
                 className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
               >

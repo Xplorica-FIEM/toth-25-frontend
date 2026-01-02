@@ -21,9 +21,15 @@ const ViewRiddles = () => {
       return;
     }
 
+    // Prevent refetching if we already have the same riddle
+    if (riddle && riddle.id === id) {
+      return;
+    }
+
     // Fetch riddle data from the API
     const fetchRiddle = async () => {
       try {
+        setLoading(true);
         const token = localStorage.getItem('token');
         
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/riddle/${id}`, {
@@ -50,7 +56,7 @@ const ViewRiddles = () => {
 
     fetchRiddle();
 
-  }, [router.isReady, router.query, router]);
+  }, [router.isReady, router.query.id]);
 
   // Loading State
   if (loading) {
@@ -95,6 +101,7 @@ const ViewRiddles = () => {
       orderNumber={riddle.orderNumber}
       backgroundImage={getBackgroundImage(riddle.orderNumber)}
       isAuthenticated={true}
+      riddleId={riddle.id}
     />
   );
 };

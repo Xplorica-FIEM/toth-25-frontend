@@ -11,8 +11,12 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Prevent FOUC by ensuring styles are loaded
+    setMounted(true);
+    
     // Redirect if already authenticated
     if (isAuthenticated()) {
       if (isAdmin()) {
@@ -106,22 +110,33 @@ export default function Login() {
     }
   };
 
+  // Prevent FOUC - don't render until mounted
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-stone-900" />
+    );
+  }
+
   return (
     <div className="min-h-screen relative">
       <div
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700"
         style={{
           backgroundImage: `url('https://images.unsplash.com/photo-1598177183267-28a7765536de?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbmNpZW50JTIwdGVtcGxlJTIwcnVpbnMlMjBzdG9uZXxlbnwxfHx8fDE3NjYyNTk3MDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')`,
+          opacity: mounted ? 1 : 0,
         }}
       />
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
 
       <div className="relative z-10 min-h-screen flex items-center justify-center px-6">
-        <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl backdrop-blur-md shadow-xl border border-amber-800/30">
+        <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl backdrop-blur-md shadow-xl border border-amber-800/30 transition-all duration-500" style={{ 
+          opacity: mounted ? 1 : 0,
+          transform: mounted ? 'translateY(0)' : 'translateY(20px)'
+        }}>
           <div className="text-center mb-8">
             <Compass className="mx-auto text-amber-400" size={42} />
             <h1 className="text-amber-100 text-2xl mt-2 font-serif tracking-wider">
-              Enter the Realm
+             Treasure Of The Hunt
             </h1>
           </div>
 

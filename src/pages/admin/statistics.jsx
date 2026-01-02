@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
 import { getAdminStats, getLeaderboard } from "@/utils/api";
-import Loader from "../loadinganimation";
 
 function AdminStatisticsContent() {
   const [stats, setStats] = useState(null);
@@ -22,8 +21,11 @@ function AdminStatisticsContent() {
         getLeaderboard(""),
       ]);
 
-      if (statsRes.ok) setStats(statsRes.data.data);
-      if (leaderboardRes.ok && leaderboardRes.data.data) setLeaderboard(leaderboardRes.data.data);
+      console.log("Stats response:", statsRes);
+      console.log("Leaderboard response:", leaderboardRes);
+
+      if (statsRes.ok) setStats(statsRes.data.stats);
+      if (leaderboardRes.ok && leaderboardRes.data.leaderboard) setLeaderboard(leaderboardRes.data.leaderboard);
     } catch (error) {
       console.error("Failed to fetch data:", error);
       setLeaderboard([]);
@@ -31,16 +33,6 @@ function AdminStatisticsContent() {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <AdminLayout activeTab="statistics">
-        <div className="flex items-center justify-center h-96">
-          <Loader />
-        </div>
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout activeTab="statistics">

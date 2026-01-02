@@ -4,13 +4,18 @@ import { useRouter } from "next/router";
 import { Plus, Trash2, Download, Edit, Eye } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
+import ConfirmModal from "@/components/ConfirmModal";
 import { getAdminRiddles, deleteRiddle } from "@/utils/api";
-import Loader from "../loadinganimation";
 
 function AdminRiddlesContent() {
   const router = useRouter();
   const [riddles, setRiddles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [selectedRiddleId, setSelectedRiddleId] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     fetchRiddles();
@@ -36,21 +41,41 @@ function AdminRiddlesContent() {
   };
 
   const handleDeleteRiddle = async (riddleId) => {
-    if (!confirm("Are you sure you want to delete this riddle?")) return;
+    setSelectedRiddleId(riddleId);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteRiddle = async () => {
+    if (!selectedRiddleId) return;
+    
     try {
-      const response = await deleteRiddle(riddleId);
+      const response = await deleteRiddle(selectedRiddleId);
+      console.log("Delete response:", response);
+      
       if (response.ok) {
-        alert("Riddle deleted successfully");
-        fetchRiddles();
+        // Immediately remove from UI for instant feedback
+        setRiddles(prev => prev.filter(r => r.id !== selectedRiddleId));
+        setShowSuccessModal(true);
+        
+        // Refresh to ensure data is in sync
+        await fetchRiddles();
+      } else {
+        setErrorMessage(response.data?.error || "Unknown error");
+        setShowErrorModal(true);
       }
     } catch (error) {
-      alert("Failed to delete riddle");
+      console.error("Delete error:", error);
+      setErrorMessage("Failed to delete riddle. Please try again.");
+      setShowErrorModal(true);
+    } finally {
+      setSelectedRiddleId(null);
     }
   };
 
   const handleDownloadQR = (riddle) => {
     if (!riddle.qrCodeBase64) {
-      alert("QR code not available for this riddle");
+      setErrorMessage("QR code not available for this riddle");
+      setShowErrorModal(true);
       return;
     }
 
@@ -76,22 +101,13 @@ function AdminRiddlesContent() {
   };
 
   const handleViewRiddle = (riddleId) => {
-    router.push(`/admin/riddles/${riddleId}`);
+    // View riddle as users see it (same page users get after scanning QR)
+    router.push(`/viewriddles?id=${riddleId}`);
   };
 
   const handleEditRiddle = (riddleId) => {
-    router.push(`/admin/riddles/edit/${riddleId}`);
+    router.push(`/admin/riddles/${riddleId}`);
   };
-
-  if (loading) {
-    return (
-      <AdminLayout activeTab="riddles">
-        <div className="flex items-center justify-center h-96">
-          <Loader />
-        </div>
-      </AdminLayout>
-    );
-  }
 
   return (
     <AdminLayout activeTab="riddles">
@@ -112,47 +128,90 @@ function AdminRiddlesContent() {
             key={riddle.id}
             className="bg-stone-900 border border-stone-800 rounded-lg p-4 hover:border-amber-700 transition-colors"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 flex-1">
-                <span className="text-lg font-semibold text-amber-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 sm:gap-4 flex-1">
+                <span className="text-base sm:text-lg font-semibold text-amber-100">
                   {riddle.orderNumber}. {riddle.riddleName}
                 </span>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                 <button
                   onClick={() => handleEditRiddle(riddle.id)}
-                  className="px-4 py-2 text-amber-100 hover:text-amber-300 transition-colors font-medium"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-2 text-sm text-amber-100 hover:bg-amber-900/20 rounded transition-colors"
                   title="Edit riddle"
                 >
-                  edit
+                  <Edit className="size-5 sm:size-4" />
+                  <span className="hidden sm:inline">edit</span>
                 </button>
                 <button
                   onClick={() => handleDownloadQR(riddle)}
-                  className="px-4 py-2 text-amber-100 hover:text-amber-300 transition-colors font-medium"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-2 text-sm text-amber-100 hover:bg-amber-900/20 rounded transition-colors"
                   title="Download QR code"
                 >
-                  download
+                  <Download className="size-5 sm:size-4" />
+                  <span className="hidden sm:inline">download</span>
                 </button>
                 <button
                   onClick={() => handleViewRiddle(riddle.id)}
-                  className="px-4 py-2 text-amber-100 hover:text-amber-300 transition-colors font-medium"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-2 text-sm text-amber-100 hover:bg-amber-900/20 rounded transition-colors whitespace-nowrap"
                   title="View riddle details"
                 >
-                  view riddles
+                  <Eye className="size-5 sm:size-4" />
+                  <span className="hidden sm:inline">view riddles</span>
                 </button>
                 <button
                   onClick={() => handleDeleteRiddle(riddle.id)}
-                  className="px-4 py-2 text-red-400 hover:text-red-300 transition-colors font-medium"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2.5 sm:py-2 text-sm text-red-400 hover:bg-red-900/20 rounded transition-colors"
                   title="Delete riddle"
                 >
-                  delete
+                  <Trash2 className="size-5 sm:size-4" />
+                  <span className="hidden sm:inline">delete</span>
                 </button>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setSelectedRiddleId(null);
+        }}
+        onConfirm={confirmDeleteRiddle}
+        title="Delete Riddle?"
+        message="Are you sure you want to delete this riddle? This action cannot be undone and will remove the riddle and its QR code permanently."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="error"
+      />
+
+      {/* Success Modal */}
+      <ConfirmModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        onConfirm={() => setShowSuccessModal(false)}
+        title="Riddle Deleted Successfully!"
+        message="The riddle has been permanently removed."
+        confirmText="OK"
+        cancelText="Close"
+        type="success"
+      />
+
+      {/* Error Modal */}
+      <ConfirmModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        onConfirm={() => setShowErrorModal(false)}
+        title="Error"
+        message={errorMessage}
+        confirmText="OK"
+        cancelText="Close"
+        type="error"
+      />
     </AdminLayout>
   );
 }
