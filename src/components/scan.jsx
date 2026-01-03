@@ -44,6 +44,12 @@ export default function Scan({ onClose }) {
       setError("");
       setIsScanning(true);
 
+      // Request camera permission first
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: isMobile ? "environment" : "user" } 
+      });
+      stream.getTracks().forEach(track => track.stop()); // Stop temp stream
+
       const devices = await BrowserQRCodeReader.listVideoInputDevices();
 
       if (!devices.length) {
@@ -57,25 +63,20 @@ export default function Scan({ onClose }) {
 
       // Select camera based on device type and current index
       let selectedCamera;
-      if (isMobile && currentCameraIndex === 0) {
+      if (currentCameraIndex === 0 && isMobile) {
         // Mobile: prefer back camera initially
-        const backCamera = devices.find((d) => d.label.toLowerCase().includes("back"));
-        selectedCamera = backCamera || devices[0];
+        const backCamera = devices.find((d) => 
+          d.label.toLowerCase().includes("back") || 
+          d.label.toLowerCase().includes("rear") ||
+          d.label.toLowerCase().includes("environment")
+        );
+        selectedCamera = backCamera || devices[devices.length > 1 ? 1 : 0];
       } else {
         // Use camera by index (for switching)
         selectedCamera = devices[currentCameraIndex % devices.length];
       }
 
-      // Enhanced video constraints
-      const videoConstraints = {
-        deviceId: selectedCamera.deviceId,
-        facingMode: isMobile ? "environment" : "user",
-        width: { min: 640, ideal: 1920, max: 1920 },
-        height: { min: 480, ideal: 1080, max: 1080 },
-        aspectRatio: { ideal: 16/9 },
-        frameRate: { ideal: 30 },
-        focusMode: isMobile ? "continuous" : "auto",
-      };
+      console.log("Selected camera:", selectedCamera.label);
 
       await readerRef.current.decodeFromVideoDevice(
         selectedCamera.deviceId,
@@ -99,8 +100,14 @@ export default function Scan({ onClose }) {
         videoStreamRef.current = videoRef.current.srcObject;
       }
     } catch (e) {
-      console.error(e);
-      setError("Camera permission denied");
+      console.error("Camera error:", e);
+      if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+        setError("Camera permission denied. Please allow camera access in browser settings.");
+      } else if (e.name === "NotFoundError") {
+        setError("No camera found on this device");
+      } else {
+        setError("Failed to access camera: " + e.message);
+      }
       setIsScanning(false);
     }
   };
@@ -256,16 +263,21 @@ export default function Scan({ onClose }) {
                   {/* Switch camera button */}
                   {availableCameras.length > 1 && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
+                        if (availableCameras.length <= 1) return;
+                        
                         stopScanning();
-                        setCurrentCameraIndex((prev) => (prev + 1) % availableCameras.length);
-                        setTimeout(() => {
-                          hasScannedRef.current = false;
-                          startScanning();
-                        }, 100);
+                        const nextIndex = (currentCameraIndex + 1) % availableCameras.length;
+                        setCurrentCameraIndex(nextIndex);
+                        
+                        // Reset and restart scanning with small delay
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        hasScannedRef.current = false;
+                        startScanning();
                       }}
-                      className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all"
+                      className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all disabled:opacity-50"
                       title="Switch Camera"
+                      disabled={availableCameras.length <= 1}
                     >
                       <SwitchCamera className="size-5 text-amber-300" />
                     </button>
