@@ -205,13 +205,12 @@ export default function Scan({ onClose }) {
         videoStreamRef.current = null;
       }
       
-      // Reset QR reader
-      if (readerRef.current) {
-        readerRef.current.reset();
-      }
-      
       // Clear video element
       if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject;
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
         videoRef.current.srcObject = null;
       }
       
