@@ -145,17 +145,17 @@ function DashboardContent() {
 
                     {/* Profile Details */}
                     <div className="px-4 py-3 space-y-2 border-b border-stone-700/50">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-amber-200/70">Department:</span>
-                        <span className="text-amber-100 font-medium">{user?.department}</span>
+                      <div className="flex justify-between items-center gap-2 text-sm">
+                        <span className="text-amber-200/70 flex-shrink-0">Department:</span>
+                        <span className="text-amber-100 font-medium text-right truncate">{user?.department}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-amber-200/70">Roll No:</span>
-                        <span className="text-amber-100 font-medium">{user?.classRollNo}</span>
+                      <div className="flex justify-between items-center gap-2 text-sm">
+                        <span className="text-amber-200/70 flex-shrink-0">Roll No:</span>
+                        <span className="text-amber-100 font-medium text-right truncate">{user?.classRollNo}</span>
                       </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-amber-200/70">Total Scans:</span>
-                        <span className="text-green-400 font-bold">{progress?.totalScans || 0}</span>
+                      <div className="flex justify-between items-center gap-2 text-sm">
+                        <span className="text-amber-200/70 flex-shrink-0">Phone:</span>
+                        <span className="text-amber-100 font-medium text-right truncate">{user?.phoneNumber}</span>
                       </div>
                     </div>
 

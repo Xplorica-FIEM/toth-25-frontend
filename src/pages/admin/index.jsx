@@ -9,7 +9,6 @@ import {
   Plus,
   Edit,
   Trash2,
-  Shield,
 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import {
@@ -18,7 +17,6 @@ import {
   getAdminStats,
   deleteRiddle,
   deleteUser,
-  toggleAdminStatus,
 } from "@/utils/api";
 
 function AdminDashboardContent() {
@@ -84,22 +82,6 @@ function AdminDashboardContent() {
       }
     } catch (error) {
       alert("Error deleting user");
-    }
-  };
-
-  const handleToggleAdmin = async (userId) => {
-    if (!confirm("Toggle admin status for this user?")) return;
-
-    try {
-      const response = await toggleAdminStatus(userId);
-      if (response.ok) {
-        alert("Admin status updated");
-        fetchAdminData();
-      } else {
-        alert(response.data.error || "Failed to update admin status");
-      }
-    } catch (error) {
-      alert("Error updating admin status");
     }
   };
 
@@ -351,13 +333,6 @@ function AdminDashboardContent() {
                         </div>
 
                         <div className="flex gap-2">
-                          <button
-                            onClick={() => handleToggleAdmin(user.id)}
-                            className="px-3 py-2 bg-purple-900/60 hover:bg-purple-900 text-purple-200 rounded-lg transition-colors text-sm"
-                          >
-                            <Shield className="size-4 inline mr-1" />
-                            Toggle Admin
-                          </button>
                           <button
                             onClick={() => handleDeleteUser(user.id)}
                             className="p-2 bg-red-900/60 hover:bg-red-900 text-red-200 rounded-lg transition-colors"

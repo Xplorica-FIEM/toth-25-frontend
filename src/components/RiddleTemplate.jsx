@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { Lock, Unlock, ArrowLeft, CheckCircle, Edit, Scroll } from 'lucide-react';
+import { Lock, Unlock, ArrowLeft, CheckCircle, Edit, Scroll, ScanLine } from 'lucide-react';
 import { getUser } from '@/utils/auth';
 import { getAdminRiddles } from '@/utils/api';
 
@@ -157,14 +157,45 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
       <div className={`relative z-10 flex items-center justify-center min-h-[calc(100vh-80px)] px-3 py-4 md:px-6 md:py-8 transition-all duration-700 ${contentVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
         style={{ transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)', willChange: 'opacity, transform' }}>
         <div className="w-full max-w-4xl">
-          {/* Riddle Number Badge */}
-          <div className="flex justify-center mb-4 md:mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-amber-600/90 backdrop-blur-md rounded-full border-2 border-amber-400/50 shadow-lg">
-              <span className="text-white font-bold text-base md:text-lg">
-                Riddle #{orderNumber}
-              </span>
+          {/* Admin Action Buttons - Top Position for Easy Access */}
+          {currentUser?.isAdmin && (
+            <div className="flex flex-wrap gap-2 mb-4 justify-center">
+              <button
+                onClick={handlePreviousRiddle}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg font-semibold shadow-lg border border-amber-400/50 text-sm transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <ArrowLeft className="size-4" />
+                <span>Previous</span>
+              </button>
+              
+              <button
+                onClick={() => router.push(`/admin/riddles/${riddleId}`)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-700/90 hover:bg-purple-600 text-purple-100 rounded-lg font-semibold shadow-lg border border-purple-600 text-sm transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <Edit className="size-4" />
+                <span>Edit</span>
+              </button>
+              
+              <button
+                onClick={handleNextRiddle}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-600/90 hover:bg-amber-500 text-white rounded-lg font-semibold shadow-lg border border-amber-400/50 text-sm transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]"
+              >
+                <span>Next</span>
+                <ArrowLeft className="size-4 rotate-180" />
+              </button>
             </div>
-          </div>
+          )}
+
+          {/* Riddle Number Badge - Admin Only */}
+          {currentUser?.isAdmin && (
+            <div className="flex justify-center mb-4 md:mb-6">
+              <div className="inline-flex items-center gap-2 px-4 py-2 md:px-6 md:py-3 bg-amber-600/90 backdrop-blur-md rounded-full border-2 border-amber-400/50 shadow-lg">
+                <span className="text-white font-bold text-base md:text-lg">
+                  Riddle {orderNumber}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Riddle Card */}
           <div className="bg-gradient-to-br from-amber-50/95 via-yellow-50/95 to-amber-100/95 backdrop-blur-xl rounded-3xl border-4 border-amber-800/80 shadow-2xl overflow-hidden relative" 
@@ -199,14 +230,6 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
             {/* Card Content */}
             <div className="p-4 md:p-8 lg:p-12">
               <div className="space-y-3 md:space-y-5">
-                {/* Success Badge */}
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 md:px-5 md:py-2 bg-amber-800/20 backdrop-blur-md rounded-full border-2 border-amber-800/50">
-                    <CheckCircle className="size-4 md:size-5 text-amber-900" />
-                    <span className="text-amber-950 font-bold text-sm md:text-base" style={{fontFamily: 'Cinzel, serif'}}>Scroll Unsealed!</span>
-                  </div>
-                </div>
-
                 {/* Riddle Content */}
                 <div className="bg-amber-100/50 backdrop-blur-sm rounded-2xl p-4 md:p-8 lg:p-10 border-4 border-amber-800/40 shadow-inner relative" style={{
                   backgroundImage: 'url("data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="paper"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" /%3E%3C/filter%3E%3Crect width="100" height="100" filter="url(%23paper)" opacity="0.15" /%3E%3C/svg%3E")',
@@ -231,63 +254,24 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
                   <div className="absolute bottom-2 md:bottom-3 left-1/2 transform -translate-x-1/2 text-amber-900/30 text-xl md:text-3xl" style={{fontFamily: 'Uncial Antiqua'}}>✦ ❧ ✦</div>
                 </div>
 
-                {/* Decorative Divider */}
-                <div className="flex items-center justify-center gap-4 py-4">
-                  <div className="h-px w-20 bg-gradient-to-r from-transparent to-amber-900/50"></div>
-                  <span className="text-amber-900/60 text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>❦</span>
-                  <div className="h-px w-20 bg-gradient-to-l from-transparent to-amber-900/50"></div>
-                </div>
-
                 {/* Instructions */}
-                <div className="text-center space-y-2 md:space-y-4">
-                  <p className="text-amber-800/70 text-sm md:text-base" style={{fontFamily: 'IM Fell English, serif'}}>
-                    Decipher the ancient riddle and continue thy noble quest
-                  </p>
-                </div>
+                <p className="text-center text-amber-800/70 text-sm md:text-base pt-4" style={{fontFamily: 'IM Fell English, serif'}}>
+                  Decipher the ancient riddle and continue thy noble quest
+                </p>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col gap-2 md:gap-3 pt-4 md:pt-6">
-                  {/* Admin Previous Riddle Button */}
-                  {currentUser?.isAdmin && (
+                {/* User Scan Again Button - Shown only for non-admin users */}
+                {!currentUser?.isAdmin && (
+                  <div className="pt-4 md:pt-6">
                     <button
-                      onClick={handlePreviousRiddle}
+                      onClick={() => router.push('/dashboard')}
                       className="w-full flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold shadow-lg border border-amber-400/50 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
                     >
-                      <ArrowLeft className="size-4 md:size-5" />
-                      <span className="hidden sm:inline">Go to Previous Riddle</span>
-                      <span className="sm:hidden">Previous</span>
+                      <ScanLine className="size-4 md:size-5" />
+                      <span className="hidden sm:inline">Scan Another Riddle</span>
+                      <span className="sm:hidden">Scan Again</span>
                     </button>
-                  )}
-                  
-                  <button
-                    onClick={() => router.push(currentUser?.isAdmin ? '/admin/dashboard' : '/dashboard')}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-stone-700/80 hover:bg-stone-600/80 backdrop-blur-md text-amber-100 rounded-xl font-semibold border border-stone-600 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
-                  >
-                    <ArrowLeft className="size-4 md:size-5" />
-                    <span className="hidden sm:inline">Back to Dashboard</span>
-                    <span className="sm:hidden">Dashboard</span>
-                  </button>
-                  
-                  {/* Admin Edit Button */}
-                  {currentUser?.isAdmin && riddleId && (
-                    <button
-                      onClick={() => router.push(`/admin/riddles/${riddleId}`)}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-purple-700/80 hover:bg-purple-600/80 backdrop-blur-md text-purple-100 rounded-xl font-semibold border border-purple-600 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
-                    >
-                      <Edit className="size-4 md:size-5" />
-                      <span className="hidden sm:inline">Edit Riddle</span>
-                      <span className="sm:hidden">Edit</span>
-                    </button>
-                  )}
-                  
-                  <button
-                    onClick={handleNextRiddle}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-4 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold shadow-lg border border-amber-400/50 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
-                  >
-                    <span className="hidden sm:inline">{currentUser?.isAdmin ? 'Go to Next Riddle' : 'Scan Another Riddle'}</span>
-                    <span className="sm:hidden">Next →</span>
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
