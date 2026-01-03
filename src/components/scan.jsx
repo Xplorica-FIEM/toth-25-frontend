@@ -57,25 +57,43 @@ export default function Scan({ onClose }) {
 
       // Select camera based on device type and current index
       let selectedCamera;
+      let videoConstraints;
+      
       if (currentCameraIndex === 0 && isMobile) {
         // Mobile: prefer back camera initially
-        // Try multiple patterns to find back camera
-        const backCamera = devices.find((d) => {
-          const label = d.label.toLowerCase();
-          return label.includes("back") || 
-                 label.includes("rear") ||
-                 label.includes("environment") ||
-                 label.includes("facing back");
-        });
-        
-        // If no back camera found and multiple cameras, use second one (usually back)
-        selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
+        // First try using facingMode to get back camera
+        try {
+          const testStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: { exact: "environment" } } 
+          });
+          testStream.getTracks().forEach(track => track.stop());
+          
+          // If successful, find the back camera from devices
+          const backCamera = devices.find((d) => {
+            const label = d.label.toLowerCase();
+            return label.includes("back") || 
+                   label.includes("rear") ||
+                   label.includes("environment") ||
+                   label.includes("facing back");
+          });
+          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
+        } catch {
+          // Fallback: try to find back camera by label or use second camera
+          const backCamera = devices.find((d) => {
+            const label = d.label.toLowerCase();
+            return label.includes("back") || 
+                   label.includes("rear") ||
+                   label.includes("environment") ||
+                   label.includes("facing back");
+          });
+          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
+        }
       } else {
         // Use camera by index (for switching)
         selectedCamera = devices[currentCameraIndex % devices.length];
       }
 
-      console.log("Selected camera:", selectedCamera.label);
+      console.log("Selected camera:", selectedCamera.label, "Device ID:", selectedCamera.deviceId);
 
       await readerRef.current.decodeFromVideoDevice(
         selectedCamera.deviceId,
@@ -181,8 +199,26 @@ export default function Scan({ onClose }) {
 
   const stopScanning = () => {
     try {
-      readerRef.current?.reset();
-    } catch {}
+      // Stop video stream tracks
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop());
+        videoStreamRef.current = null;
+      }
+      
+      // Reset QR reader
+      if (readerRef.current) {
+        readerRef.current.reset();
+      }
+      
+      // Clear video element
+      if (videoRef.current && videoRef.current.srcObject) {
+        videoRef.current.srcObject = null;
+      }
+      
+      setTorchEnabled(false);
+    } catch (e) {
+      console.error("Error stopping camera:", e);
+    }
   };
 
   const toggleTorch = async () => {
@@ -265,14 +301,18 @@ export default function Scan({ onClose }) {
                   {availableCameras.length > 1 && (
                     <button
                       onClick={async () => {
-                        if (availableCameras.length <= 1) return;
+                        if (availableCameras.length <= 1 || !isScanning) return;
                         
+                        setIsScanning(false);
                         stopScanning();
+                        
+                        // Wait for camera to fully release
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
                         const nextIndex = (currentCameraIndex + 1) % availableCameras.length;
                         setCurrentCameraIndex(nextIndex);
                         
-                        // Reset and restart scanning with small delay
-                        await new Promise(resolve => setTimeout(resolve, 200));
+                        // Reset and restart scanning
                         hasScannedRef.current = false;
                         startScanning();
                       }}
