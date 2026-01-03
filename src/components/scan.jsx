@@ -44,12 +44,6 @@ export default function Scan({ onClose }) {
       setError("");
       setIsScanning(true);
 
-      // Request camera permission first
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: isMobile ? "environment" : "user" } 
-      });
-      stream.getTracks().forEach(track => track.stop()); // Stop temp stream
-
       const devices = await BrowserQRCodeReader.listVideoInputDevices();
 
       if (!devices.length) {
@@ -65,12 +59,17 @@ export default function Scan({ onClose }) {
       let selectedCamera;
       if (currentCameraIndex === 0 && isMobile) {
         // Mobile: prefer back camera initially
-        const backCamera = devices.find((d) => 
-          d.label.toLowerCase().includes("back") || 
-          d.label.toLowerCase().includes("rear") ||
-          d.label.toLowerCase().includes("environment")
-        );
-        selectedCamera = backCamera || devices[devices.length > 1 ? 1 : 0];
+        // Try multiple patterns to find back camera
+        const backCamera = devices.find((d) => {
+          const label = d.label.toLowerCase();
+          return label.includes("back") || 
+                 label.includes("rear") ||
+                 label.includes("environment") ||
+                 label.includes("facing back");
+        });
+        
+        // If no back camera found and multiple cameras, use second one (usually back)
+        selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
       } else {
         // Use camera by index (for switching)
         selectedCamera = devices[currentCameraIndex % devices.length];
@@ -102,11 +101,13 @@ export default function Scan({ onClose }) {
     } catch (e) {
       console.error("Camera error:", e);
       if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
-        setError("Camera permission denied. Please allow camera access in browser settings.");
+        setError("Camera permission denied. Please allow camera access.");
       } else if (e.name === "NotFoundError") {
         setError("No camera found on this device");
+      } else if (e.name === "NotReadableError") {
+        setError("Camera is being used by another app");
       } else {
-        setError("Failed to access camera: " + e.message);
+        setError("Failed to start camera. Please try again.");
       }
       setIsScanning(false);
     }
