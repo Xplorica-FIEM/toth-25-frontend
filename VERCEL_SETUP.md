@@ -37,3 +37,5 @@ OR simply push a new commit to trigger a deployment.
 ## Local Development
 
 For local development, the `.env.local` file will be used automatically.
+
+deployment 1 
