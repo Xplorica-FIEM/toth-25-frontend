@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor } from "lucide-react"; 
+import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera } from "lucide-react"; 
 import { scanQR } from "@/utils/api";
 
 export default function Scan({ onClose }) {
@@ -17,6 +17,8 @@ export default function Scan({ onClose }) {
   const [loadingMessage, setLoadingMessage] = useState("Processing...");
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const videoStreamRef = useRef(null);
 
   useEffect(() => {
@@ -50,14 +52,18 @@ export default function Scan({ onClose }) {
         return;
       }
 
-      // Select camera based on device type
+      // Store available cameras
+      setAvailableCameras(devices);
+
+      // Select camera based on device type and current index
       let selectedCamera;
-      if (isMobile) {
-        // Mobile: prefer back camera
-        selectedCamera = devices.find((d) => d.label.toLowerCase().includes("back")) || devices[0];
+      if (isMobile && currentCameraIndex === 0) {
+        // Mobile: prefer back camera initially
+        const backCamera = devices.find((d) => d.label.toLowerCase().includes("back"));
+        selectedCamera = backCamera || devices[0];
       } else {
-        // Desktop: prefer any external camera, then front camera
-        selectedCamera = devices.find((d) => !d.label.toLowerCase().includes("integrated")) || devices[0];
+        // Use camera by index (for switching)
+        selectedCamera = devices[currentCameraIndex % devices.length];
       }
 
       // Enhanced video constraints
@@ -230,7 +236,7 @@ export default function Scan({ onClose }) {
                   {/* Animated scanning line */}
                   {isScanning && (
                     <div className="absolute inset-0 overflow-hidden">
-                      <div className="h-1 w-full bg-gradient-to-r from-transparent via-amber-400 to-transparent animate-scan-line shadow-[0_0_10px_rgba(251,191,36,0.8)]"></div>
+                      <div className="h-1 w-full bg-linear-to-r from-transparent via-amber-400 to-transparent animate-scan-line shadow-[0_0_10px_rgba(251,191,36,0.8)]"></div>
                     </div>
                   )}
                 </div>
@@ -244,18 +250,40 @@ export default function Scan({ onClose }) {
                 </div>
               </div>
               
-              {/* Torch button for mobile */}
+              {/* Mobile camera controls */}
               {isMobile && (
-                <button
-                  onClick={toggleTorch}
-                  className="absolute bottom-4 right-4 p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all z-10"
-                >
-                  {torchEnabled ? (
-                    <Flashlight className="size-5 text-amber-400" />
-                  ) : (
-                    <FlashlightOff className="size-5 text-amber-300" />
+                <div className="absolute bottom-4 right-4 flex gap-2 z-10">
+                  {/* Switch camera button */}
+                  {availableCameras.length > 1 && (
+                    <button
+                      onClick={() => {
+                        stopScanning();
+                        setCurrentCameraIndex((prev) => (prev + 1) % availableCameras.length);
+                        setTimeout(() => {
+                          hasScannedRef.current = false;
+                          startScanning();
+                        }, 100);
+                      }}
+                      className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all"
+                      title="Switch Camera"
+                    >
+                      <SwitchCamera className="size-5 text-amber-300" />
+                    </button>
                   )}
-                </button>
+                  
+                  {/* Torch button */}
+                  <button
+                    onClick={toggleTorch}
+                    className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all"
+                    title={torchEnabled ? "Turn off flashlight" : "Turn on flashlight"}
+                  >
+                    {torchEnabled ? (
+                      <Flashlight className="size-5 text-amber-400" />
+                    ) : (
+                      <FlashlightOff className="size-5 text-amber-300" />
+                    )}
+                  </button>
+                </div>
               )}
               
               {/* Tips */}

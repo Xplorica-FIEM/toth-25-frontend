@@ -61,7 +61,7 @@ const ViewRiddles = () => {
   // Loading State
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gradient-to-br from-stone-900 via-amber-900/20 to-stone-900 text-amber-400 font-mono text-xl">
+      <div className="flex justify-center items-center h-screen bg-linear-to-br from-stone-900 via-amber-900/20 to-stone-900 text-amber-400 font-mono text-xl">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-amber-400 mx-auto mb-4"></div>
           <p className="animate-pulse">Loading Riddle...</p>
@@ -73,7 +73,7 @@ const ViewRiddles = () => {
   // Error State
   if (error) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-stone-900 via-red-900/20 to-stone-900 text-red-400 font-mono">
+      <div className="flex flex-col justify-center items-center h-screen bg-linear-to-br from-stone-900 via-red-900/20 to-stone-900 text-red-400 font-mono">
         <div className="text-center max-w-md mx-auto p-8">
           <p className="text-4xl mb-4">⚠️</p>
           <p className="text-2xl mb-4">ERROR</p>
