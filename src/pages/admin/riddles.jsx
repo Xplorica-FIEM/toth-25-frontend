@@ -122,12 +122,19 @@ function AdminRiddlesContent() {
         </button>
       </div>
 
-      <div className="space-y-3">
-        {riddles?.map((riddle) => (
-          <div
-            key={riddle.id}
-            className="bg-stone-900 border border-stone-800 rounded-lg p-4 hover:border-amber-700 transition-colors"
-          >
+      {loading ? (
+        <div className="flex flex-col justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-400 border-t-transparent mb-4"></div>
+          <p className="text-amber-400 font-mono text-lg animate-pulse">Loading Riddles...</p>
+          <p className="text-amber-200/60 text-sm mt-2">Fetching riddle list</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {riddles?.map((riddle) => (
+            <div
+              key={riddle.id}
+              className="bg-stone-900 border border-stone-800 rounded-lg p-4 hover:border-amber-700 transition-colors"
+            >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 sm:gap-4 flex-1">
                 <span className="text-base sm:text-lg font-semibold text-amber-100">
@@ -172,7 +179,8 @@ function AdminRiddlesContent() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal

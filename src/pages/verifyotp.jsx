@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Compass, AlertCircle } from "lucide-react";
 import { verifyOTP, resendOTP } from "@/utils/api";
+import { saveToken, saveUser } from "@/utils/auth";
 
 export default function VerifyOtp() {
   const router = useRouter();
@@ -47,12 +48,21 @@ export default function VerifyOtp() {
 
       setSuccess(response.data.message || "Email verified successfully!");
 
-      // Save email in localStorage for complete profile
-      localStorage.setItem("email", email);
+      // Save token and user data for auto-login
+      if (response.data.token) {
+        saveToken(response.data.token);
+      }
+      
+      if (response.data.user) {
+        saveUser(response.data.user);
+      }
 
-      // Move to complete profile page after 1.5s
+      // Clear email from localStorage (no longer needed)
+      localStorage.removeItem("email");
+
+      // Redirect to dashboard after successful login
       setTimeout(() => {
-        router.push("/completeprofile");
+        router.push("/dashboard");
       }, 1500);
     } catch (err) {
       setError(err.message);

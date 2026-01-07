@@ -55,10 +55,17 @@ function AdminLeaderboardContent() {
         </div>
       </div>
 
-      <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <table className="w-full min-w-max">
-            <thead className="bg-stone-800">
+      {loading ? (
+        <div className="flex flex-col justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-400 border-t-transparent mb-4"></div>
+          <p className="text-amber-400 font-mono text-lg animate-pulse">Loading Leaderboard...</p>
+          <p className="text-amber-200/60 text-sm mt-2">Calculating rankings</p>
+        </div>
+      ) : (
+        <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-max">
+              <thead className="bg-stone-800">
               <tr>
                 <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-amber-200 font-semibold text-sm sm:text-base whitespace-nowrap">Rank</th>
                 <th className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 text-left text-amber-200 font-semibold text-sm sm:text-base whitespace-nowrap">Name</th>
@@ -108,10 +115,11 @@ function AdminLeaderboardContent() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </AdminLayout>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Compass, AlertCircle } from "lucide-react";
 import { register } from "@/utils/api";
 import { isAuthenticated, isAdmin } from "@/utils/auth";
+import { DEPARTMENTS } from "@/constants/departments";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,6 +14,10 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    fullName: "",
+    classRollNo: "",
+    phoneNumber: "",
+    department: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -46,8 +51,8 @@ export default function RegisterPage() {
     setLoading(true);
 
     // Basic validation
-    if (!form.email || !form.password || !form.confirmPassword) {
-      setError("All fields are required");
+    if (!form.email || !form.password || !form.confirmPassword || !form.fullName || !form.classRollNo || !form.department) {
+      setError("All fields are required except phone number");
       setLoading(false);
       return;
     }
@@ -62,7 +67,11 @@ export default function RegisterPage() {
       const response = await register(
         form.email.trim(),
         form.password,
-        form.confirmPassword
+        form.confirmPassword,
+        form.fullName.trim(),
+        form.classRollNo.trim(),
+        form.phoneNumber.trim(),
+        form.department
       );
 
       if (!response.ok) {
@@ -82,7 +91,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black px-6 relative">
+    <div className="h-screen overflow-y-auto flex items-center justify-center bg-black px-4 py-4 relative">
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -96,34 +105,34 @@ export default function RegisterPage() {
       <div className="absolute inset-0 bg-black/40" />
       
       {/* Content */}
-      <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl shadow-xl space-y-6 relative z-10 backdrop-blur-sm">
+      <div className="w-full max-w-md p-4 sm:p-6 bg-amber-900/60 rounded-xl shadow-xl space-y-3 relative z-10 my-4">
         {/* Header */}
         <div className="text-center">
-          <Compass className="mx-auto text-amber-400" size={48} />
-          <h1 className="text-amber-100 text-2xl mt-2">Create an Account</h1>
-          <p className="text-amber-200/70 text-sm mt-2">
+          <Compass className="mx-auto text-amber-400" size={36} />
+          <h1 className="text-amber-100 text-xl mt-1">Create an Account</h1>
+          <p className="text-amber-200/70 text-xs mt-1">
             Sign up to step into the world of mysteries!
           </p>
         </div>
 
         {/* Info Message */}
         {showMessage && (
-          <div className="p-3 bg-blue-500/20 rounded text-blue-200 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-            <AlertCircle size={16} />
+          <div className="p-2 bg-blue-500/20 rounded text-blue-200 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle size={14} />
             <span>No account found. Create one to continue!</span>
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="p-3 bg-red-500/20 rounded text-red-200 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-            <AlertCircle size={16} />
+          <div className="p-2 bg-red-500/20 rounded text-red-200 text-xs flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle size={14} />
             <span>{error}</span>
           </div>
         )}
 
         {/* Registration Form */}
-        <form onSubmit={handleRegister} className="space-y-4">
+        <form onSubmit={handleRegister} className="space-y-2.5">
           <input
             type="email"
             name="email"
@@ -131,8 +140,48 @@ export default function RegisterPage() {
             value={form.email}
             onChange={handleChange}
             required
-            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full p-2.5 text-sm rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
+          <input
+            type="text"
+            name="fullName"
+            placeholder="Full Name"
+            value={form.fullName}
+            onChange={handleChange}
+            required
+            className="w-full p-2.5 text-sm rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="text"
+            name="classRollNo"
+            placeholder="Class Roll Number"
+            value={form.classRollNo}
+            onChange={handleChange}
+            required
+            className="w-full p-2.5 text-sm rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <input
+            type="tel"
+            name="phoneNumber"
+            placeholder="Phone Number (Optional)"
+            value={form.phoneNumber}
+            onChange={handleChange}
+            className="w-full p-2.5 text-sm rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <select
+            name="department"
+            value={form.department}
+            onChange={handleChange}
+            required
+            className="w-full p-2.5 text-sm rounded bg-black/40 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            <option value="" disabled>Select Department</option>
+            {DEPARTMENTS.map((dept) => (
+              <option key={dept} value={dept} className="bg-stone-900">
+                {dept}
+              </option>
+            ))}
+          </select>
           <input
             type="password"
             name="password"
@@ -140,7 +189,7 @@ export default function RegisterPage() {
             value={form.password}
             onChange={handleChange}
             required
-            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full p-2.5 text-sm rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
           <input
             type="password"
@@ -149,20 +198,20 @@ export default function RegisterPage() {
             value={form.confirmPassword}
             onChange={handleChange}
             required
-            className="w-full p-3 rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full p-2.5 text-sm rounded bg-black/40 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
           />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-amber-600 rounded text-white hover:bg-amber-500 disabled:opacity-50"
+            className="w-full py-2.5 text-sm bg-amber-600 rounded text-white hover:bg-amber-500 disabled:opacity-50"
           >
-            {loading ? "Sending OTP..." : "Register"}
+            {loading ? "Creating Account..." : "Register"}
           </button>
         </form>
 
         {/* Footer */}
-        <div className="mt-4 text-center text-amber-200/60 text-sm">
+        <div className="mt-2 text-center text-amber-200/60 text-xs">
           Already have an account?{" "}
           <Link
             href="/login"

@@ -38,21 +38,28 @@ function AdminUsersContent() {
         <p className="text-amber-200/70">Total: {users?.length || 0}</p>
       </div>
 
-      <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-stone-800">
-              <tr>
-                <th className="px-6 py-4 text-left text-amber-200 font-semibold">Name</th>
-                <th className="px-6 py-4 text-left text-amber-200 font-semibold">Email</th>
-                <th className="px-6 py-4 text-left text-amber-200 font-semibold">Phone Number</th>
-                <th className="px-6 py-4 text-left text-amber-200 font-semibold">Department</th>
-                <th className="px-6 py-4 text-left text-amber-200 font-semibold">Roll No</th>
-                <th className="px-6 py-4 text-left text-amber-200 font-semibold">Role</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-800">
-              {users?.map((user) => (
+      {loading ? (
+        <div className="flex flex-col justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-400 border-t-transparent mb-4"></div>
+          <p className="text-amber-400 font-mono text-lg animate-pulse">Loading Users...</p>
+          <p className="text-amber-200/60 text-sm mt-2">Fetching user data</p>
+        </div>
+      ) : (
+        <div className="bg-stone-900 border border-stone-800 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-stone-800">
+                <tr>
+                  <th className="px-6 py-4 text-left text-amber-200 font-semibold">Name</th>
+                  <th className="px-6 py-4 text-left text-amber-200 font-semibold">Email</th>
+                  <th className="px-6 py-4 text-left text-amber-200 font-semibold">Phone Number</th>
+                  <th className="px-6 py-4 text-left text-amber-200 font-semibold">Department</th>
+                  <th className="px-6 py-4 text-left text-amber-200 font-semibold">Roll No</th>
+                  <th className="px-6 py-4 text-left text-amber-200 font-semibold">Role</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-800">
+                {users?.map((user) => (
                 <tr key={user.id} className="hover:bg-stone-800/50">
                   <td className="px-6 py-4 text-amber-100">{user.fullName}</td>
                   <td className="px-6 py-4 text-amber-200/70 text-sm">{user.email}</td>
@@ -72,10 +79,11 @@ function AdminUsersContent() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
     </AdminLayout>
   );
 }

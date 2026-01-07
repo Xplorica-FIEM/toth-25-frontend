@@ -39,7 +39,14 @@ function AdminDashboardContent() {
         <h1 className="text-2xl md:text-3xl font-bold text-amber-100 mb-4 md:mb-6">Dashboard Overview</h1>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
+        {loading ? (
+          <div className="flex flex-col justify-center items-center py-20">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-400 border-t-transparent mb-4"></div>
+            <p className="text-amber-400 font-mono text-lg animate-pulse">Loading Dashboard...</p>
+            <p className="text-amber-200/60 text-sm mt-2">Fetching statistics</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
           <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 md:p-6">
             <Users className="size-8 md:size-10 text-blue-400 mb-2 md:mb-3" />
             <p className="text-amber-200/70 text-xs md:text-sm mb-1">Total Users</p>
@@ -61,6 +68,7 @@ function AdminDashboardContent() {
             <p className="text-2xl md:text-3xl font-bold text-amber-100">{stats?.completedGames || 0}</p>
           </div>
         </div>
+        )}
 
         {/* Quick Actions */}
         <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 md:p-6">

@@ -16,20 +16,16 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
 
     // Check authentication
     if (!isAuthenticated()) {
-      console.log('❌ Not authenticated, redirecting to login');
       router.replace('/login');
       return;
     }
 
     // Check admin access if required
     if (adminOnly && !isAdmin()) {
-      console.log('❌ Admin access required but user is not admin, redirecting to dashboard');
-      console.log('User data:', JSON.parse(localStorage.getItem('user') || '{}'));
       router.replace('/dashboard');
       return;
     }
 
-    console.log('✅ Access granted. Admin only:', adminOnly, 'Is admin:', isAdmin());
     setLoading(false);
   }, []);
 

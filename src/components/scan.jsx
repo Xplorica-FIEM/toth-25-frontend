@@ -1,5 +1,5 @@
 // components/scan.jsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
 import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera } from "lucide-react"; 
@@ -20,19 +20,17 @@ export default function Scan({ onClose }) {
   const [availableCameras, setAvailableCameras] = useState([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const videoStreamRef = useRef(null);
+  const scanIntervalRef = useRef(null);
 
   useEffect(() => {
     // Detect if mobile device
     setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     
-    // Initialize Camera
+    // Initialize Camera immediately (no delay)
     readerRef.current = new BrowserQRCodeReader();
-    const timeout = setTimeout(() => {
-      startScanning();
-    }, 300);
+    startScanning(); // Start immediately for faster interaction
 
     return () => {
-      clearTimeout(timeout);
       stopScanning();
     };
   }, []);
@@ -57,7 +55,15 @@ export default function Scan({ onClose }) {
 
       // Select camera based on device type and current index
       let selectedCamera;
-      let videoConstraints;
+      
+      // Optimized video constraints for performance
+      const videoConstraints = {
+        width: { ideal: isMobile ? 1280 : 1920, max: isMobile ? 1920 : 2560 },
+        height: { ideal: isMobile ? 720 : 1080, max: isMobile ? 1080 : 1440 },
+        frameRate: { ideal: 30, max: 30 },
+        aspectRatio: { ideal: 16/9 },
+        facingMode: currentCameraIndex === 0 && isMobile ? { ideal: 'environment' } : 'user'
+      };
       
       if (currentCameraIndex === 0 && isMobile) {
         // Mobile: prefer back camera initially
@@ -93,8 +99,15 @@ export default function Scan({ onClose }) {
         selectedCamera = devices[currentCameraIndex % devices.length];
       }
 
-      console.log("Selected camera:", selectedCamera.label, "Device ID:", selectedCamera.deviceId);
-
+      // Configure QR reader with performance hints
+      const hints = new Map();
+      const BarcodeFormat = (await import('@zxing/library')).BarcodeFormat;
+      hints.set(2, [BarcodeFormat.QR_CODE]); // DecodeHintType.POSSIBLE_FORMATS = 2
+      hints.set(3, true); // DecodeHintType.TRY_HARDER = 3
+      
+      readerRef.current.hints = hints;
+      readerRef.current.timeBetweenDecodingAttempts = 200; // Throttle to 5 scans/sec
+      
       await readerRef.current.decodeFromVideoDevice(
         selectedCamera.deviceId,
         videoRef.current,
@@ -106,9 +119,7 @@ export default function Scan({ onClose }) {
             stopScanning();
             handleQRScan(text);
           }
-          if (err && err.name !== "NotFoundException") {
-            console.error(err);
-          }
+          // Silently ignore NotFoundException to reduce console spam
         }
       );
 
@@ -131,29 +142,11 @@ export default function Scan({ onClose }) {
     }
   };
 
-  // function to check if it is a meme link
-  const isExternalUrl = (string) => {
-    try {
-      const url = new URL(string);
-      return url.protocol === "http:" || url.protocol === "https:";
-    } catch (_) {
-      return false;
-    }
-  };
-
   const handleQRScan = async (qrData) => {
     setError("");
     setLoading(true);
 
     try {
-      // Check for external URLs (easter eggs/memes)
-      if (isExternalUrl(qrData)) {
-        setLoadingMessage("Redirecting to external sector...");
-        window.location.href = qrData;
-        return;
-      }
-
-      // Send encrypted qrData to backend for decryption and verification
       setLoadingMessage("Verifying QR code...");
 
       const response = await scanQR(qrData);
@@ -171,15 +164,14 @@ export default function Scan({ onClose }) {
         throw new Error("Invalid response from server");
       }
 
-      // Show different loading message based on whether it's a duplicate scan
-      if (!isFirstScan) {
-        setLoadingMessage("Already unlocked! Redirecting to riddle...");
-      } else {
-        setLoadingMessage("New riddle unlocked! +100 points");
-      }
+      // Generic loading message
+      setLoadingMessage(isFirstScan ? "New Riddle Unlocked!" : "Loading Riddle...");
+
+      // Cache the riddle ID for faster page loads
+      localStorage.setItem('currentRiddleId', riddleId);
 
       // Brief delay to show the message
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       // Redirect to view riddle
       await router.push(
@@ -197,7 +189,7 @@ export default function Scan({ onClose }) {
     }
   };
 
-  const stopScanning = () => {
+  const stopScanning = useCallback(() => {
     try {
       // Stop video stream tracks
       if (videoStreamRef.current) {
@@ -218,7 +210,7 @@ export default function Scan({ onClose }) {
     } catch (e) {
       console.error("Error stopping camera:", e);
     }
-  };
+  }, []);
 
   const toggleTorch = async () => {
     if (!videoStreamRef.current) return;
@@ -242,7 +234,7 @@ export default function Scan({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90">
       <div className="relative w-full max-w-2xl mx-4">
         <button
           onClick={onClose}
@@ -265,6 +257,11 @@ export default function Scan({ onClose }) {
                 playsInline
                 muted
                 className="w-full h-[400px] md:h-[500px] object-cover"
+                style={{ 
+                  transform: 'translateZ(0)',
+                  willChange: 'transform',
+                  backfaceVisibility: 'hidden'
+                }}
               />
               
               {/* Scanning frame with corners */}
@@ -287,7 +284,7 @@ export default function Scan({ onClose }) {
               
               {/* Instructions overlay */}
               <div className="absolute top-4 left-0 right-0 text-center">
-                <div className="inline-flex items-center gap-2 bg-black/80 px-4 py-2 rounded-lg backdrop-blur-sm border border-amber-500/30">
+                <div className="inline-flex items-center gap-2 bg-black/90 px-4 py-2 rounded-lg border border-amber-500/30">
                   {isMobile ? <Smartphone className="size-4 text-amber-400" /> : <Monitor className="size-4 text-amber-400" />}
                   <p className="text-amber-300 text-sm font-medium">Hold QR code steady within frame</p>
                 </div>
@@ -315,7 +312,7 @@ export default function Scan({ onClose }) {
                         hasScannedRef.current = false;
                         startScanning();
                       }}
-                      className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all disabled:opacity-50"
+                      className="p-3 bg-black/80 hover:bg-black rounded-full border border-amber-500/30 transition-all disabled:opacity-50"
                       title="Switch Camera"
                       disabled={availableCameras.length <= 1}
                     >
@@ -326,7 +323,7 @@ export default function Scan({ onClose }) {
                   {/* Torch button */}
                   <button
                     onClick={toggleTorch}
-                    className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all"
+                    className="p-3 bg-black/80 hover:bg-black rounded-full border border-amber-500/30 transition-all"
                     title={torchEnabled ? "Turn off flashlight" : "Turn on flashlight"}
                   >
                     {torchEnabled ? (
@@ -339,13 +336,13 @@ export default function Scan({ onClose }) {
               )}
               
               {/* Tips */}
-              <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded-lg backdrop-blur-sm border border-amber-500/20">
+              <div className="absolute bottom-4 left-4 bg-black/80 px-3 py-2 rounded-lg border border-amber-500/20">
                 <p className="text-amber-400/70 text-xs">
                   {isMobile ? "💡 Use good lighting" : "💡 Move QR closer to camera"}
                 </p>
               </div>
               
-              <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-amber-300 text-sm font-semibold bg-black/70 px-4 py-2 rounded-lg backdrop-blur-sm">
+              <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-amber-300 text-sm font-semibold bg-black/80 px-4 py-2 rounded-lg">
                 {isScanning ? "Scanning..." : "Ready to scan"}
               </p>
             </div>

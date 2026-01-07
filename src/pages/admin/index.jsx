@@ -86,18 +86,8 @@ function AdminDashboardContent() {
   };
 
   return (
-    <div className="min-h-screen relative">
-      {/* Background */}
-      <div
-        className="fixed inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1618385418700-35dc948cdeec')",
-        }}
-      />
-      <div className="fixed inset-0 bg-black/75 backdrop-blur-sm" />
-
-      <div className="relative z-10 min-h-screen px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-stone-950 via-stone-900 to-amber-950">
+      <div className="min-h-screen px-6 py-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">

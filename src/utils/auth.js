@@ -70,6 +70,8 @@ export const isAdmin = () => {
 export const logout = () => {
   removeToken();
   if (typeof window !== 'undefined') {
+    // Clear cached riddle ID on logout
+    localStorage.removeItem('currentRiddleId');
     window.location.href = '/login';
   }
 };

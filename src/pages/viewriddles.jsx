@@ -12,27 +12,39 @@ const ViewRiddles = () => {
     // Wait for the router to be ready
     if (!router.isReady) return;
 
-    // Get the riddle ID from query
-    const { id } = router.query;
-
-    if (!id) {
-      console.warn("No ID detected. Redirecting to dashboard.");
-      router.push('/dashboard');
-      return;
+    // Get the riddle ID from query or cache
+    let riddleId = router.query.id;
+    
+    // If no ID in URL, check localStorage cache
+    if (!riddleId) {
+      riddleId = localStorage.getItem('currentRiddleId');
+      if (riddleId) {
+        // Update URL with cached ID (without reloading)
+        router.replace({
+          pathname: '/viewriddles',
+          query: { id: riddleId }
+        }, undefined, { shallow: true });
+      } else {
+        router.push('/dashboard');
+        return;
+      }
     }
 
     // Prevent refetching if we already have the same riddle
-    if (riddle && riddle.id === id) {
+    if (riddle && riddle.id === riddleId) {
       return;
     }
 
     // Fetch riddle data from the API
     const fetchRiddle = async () => {
       try {
+        // Show minimal loading state
         setLoading(true);
+        setError('');
+        
         const token = localStorage.getItem('token');
         
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/riddle/${id}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/riddle/${riddleId}`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -42,15 +54,23 @@ const ViewRiddles = () => {
         const data = await response.json();
 
         if (response.ok && data.success) {
+          // CRITICAL: Set riddle data immediately so user can read it
           setRiddle(data.riddle);
+          setLoading(false); // ✅ User can now read riddle!
+          
+          // Update cache with current riddle ID
+          localStorage.setItem('currentRiddleId', data.riddle.id);
         } else {
           setError(data.error || 'Failed to retrieve riddle data.');
+          setLoading(false);
+          // Clear invalid cache
+          localStorage.removeItem('currentRiddleId');
         }
       } catch (err) {
-        console.error("Error fetching riddle:", err);
         setError('Riddle not found or access denied.');
-      } finally {
         setLoading(false);
+        // Clear invalid cache
+        localStorage.removeItem('currentRiddleId');
       }
     };
 
@@ -61,10 +81,11 @@ const ViewRiddles = () => {
   // Loading State
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-linear-to-br from-stone-900 via-amber-900/20 to-stone-900 text-amber-400 font-mono text-xl">
+      <div className="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-stone-900 via-amber-900/20 to-stone-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-amber-400 mx-auto mb-4"></div>
-          <p className="animate-pulse">Loading Riddle...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-400 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-amber-400 font-mono text-xl animate-pulse">Loading Riddle...</p>
+          <p className="text-amber-200/60 text-sm mt-2">Preparing your challenge</p>
         </div>
       </div>
     );

@@ -23,7 +23,6 @@ const fetchAPI = async (endpoint, options = {}) => {
 
   // Try to fetch - catch network errors separately
   try {
-    console.log(`🌐 Fetching: ${API_URL}${endpoint}`);
     response = await fetch(`${API_URL}${endpoint}`, config);
   } catch (networkError) {
     console.error('❌ Network error - Backend not reachable:', networkError);
@@ -42,8 +41,6 @@ const fetchAPI = async (endpoint, options = {}) => {
       console.error('Failed to parse JSON:', jsonError);
       data = null;
     }
-  } else {
-    console.warn('Response is not JSON, content-type:', contentType);
   }
 
   // Handle 401 Unauthorized - token expired or invalid
@@ -68,12 +65,20 @@ const fetchAPI = async (endpoint, options = {}) => {
 // ==================== AUTH ENDPOINTS ====================
 
 /**
- * Register new user (Step 1)
+ * Register new user (Step 1 - now with all profile fields)
  */
-export const register = async (email, password, confirmPassword) => {
+export const register = async (email, password, confirmPassword, fullName, classRollNo, phoneNumber, department) => {
   return fetchAPI('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, confirmPassword }),
+    body: JSON.stringify({ 
+      email, 
+      password, 
+      confirmPassword, 
+      fullName, 
+      classRollNo, 
+      phoneNumber, 
+      department 
+    }),
   });
 };
 
@@ -158,6 +163,13 @@ export const getProgress = async () => {
  */
 export const getMyScans = async () => {
   return fetchAPI('/api/game/my-scans');
+};
+
+/**
+ * Get riddles metadata for caching (non-sensitive data only)
+ */
+export const getRiddlesMetadata = async () => {
+  return fetchAPI('/api/game/riddles-metadata');
 };
 
 /**

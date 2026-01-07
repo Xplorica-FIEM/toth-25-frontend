@@ -38,7 +38,14 @@ function AdminStatisticsContent() {
     <AdminLayout activeTab="statistics">
       <h1 className="text-3xl font-bold text-amber-100 mb-6">Statistics</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {loading ? (
+        <div className="flex flex-col justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-400 border-t-transparent mb-4"></div>
+          <p className="text-amber-400 font-mono text-lg animate-pulse">Loading Statistics...</p>
+          <p className="text-amber-200/60 text-sm mt-2">Gathering game data</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-stone-900 border border-stone-800 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-amber-100 mb-4">Game Statistics</h3>
           <div className="space-y-3">
@@ -74,8 +81,9 @@ function AdminStatisticsContent() {
               </div>
             ))}
           </div>
+          </div>
         </div>
-      </div>
+      )}
     </AdminLayout>
   );
 }

@@ -1,10 +1,11 @@
 // pages/dashboard.jsx - Main dashboard with user stats
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link"; // Import Link for prefetching
 import { Compass, ScanLine, Trophy, Users, LogOut, User, TrendingUp, ChevronDown, Shield } from "lucide-react";
 import dynamic from "next/dynamic";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { getCurrentUser, getProgress } from "@/utils/api";
+import { getCurrentUser, getProgress, getRiddlesMetadata } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
 
 const Scan = dynamic(() => import("../components/scan"), {
@@ -40,31 +41,42 @@ function DashboardContent() {
   }, []);
 
   const fetchDashboardData = async () => {
-    setLoading(true);
+    // PHASE 1: Load critical data from cache immediately (0ms)
+    const storedUser = getUser();
+    if (storedUser) {
+      setUser(storedUser);
+      setLoading(false); // ✅ User can interact immediately!
+    }
+
+    // PHASE 2: Fetch fresh data in background (non-blocking)
     try {
-      // Get user from localStorage first
-      const storedUser = getUser();
-      if (storedUser) {
-        setUser(storedUser);
-      }
-
-      // Fetch fresh user data and progress
-      const [userResponse, progressResponse] = await Promise.all([
-        getCurrentUser(),
-        getProgress(),
-      ]);
-
+      // Critical: User data first
+      const userResponse = await getCurrentUser();
       if (userResponse.ok) {
         setUser(userResponse.data.user);
       }
 
+      // Non-critical: Progress/stats after
+      const progressResponse = await getProgress();
       if (progressResponse.ok) {
         setProgress(progressResponse.data.progress);
+      }
+
+      // Cache riddles metadata for instant scan results
+      const riddlesResponse = await getRiddlesMetadata();
+      if (riddlesResponse.ok && riddlesResponse.data.riddles) {
+        localStorage.setItem('riddlesMetadata', JSON.stringify({
+          riddles: riddlesResponse.data.riddles,
+          cachedAt: Date.now()
+        }));
+        console.log(`✅ Cached ${riddlesResponse.data.riddles.length} riddles metadata`);
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
     } finally {
-      setLoading(false);
+      if (!storedUser) {
+        setLoading(false);
+      }
     }
   };
 
@@ -75,57 +87,55 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen relative">
+    <div className="h-screen overflow-hidden flex flex-col relative">
       {/* Background image */}
       <div
         className="fixed inset-0 bg-cover bg-center"
         style={{
           backgroundImage:
-            "url('https://images.unsplash.com/photo-1618385418700-35dc948cdeec')",
+            "url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2070')",
         }}
       />
-
-      {/* Overlay (hide when scanner is open) */}
-      {!showScanner && (
-        <div className="fixed inset-0 bg-black/65 backdrop-blur-sm" />
-      )}
-
-      <div className="relative z-10 min-h-screen">
+      
+      {/* Dark overlay */}
+      <div className="fixed inset-0 bg-black/65" />
+      
+      <div className="flex flex-col h-full relative z-10">
         {/* Top Navigation Bar */}
-        <nav className="bg-stone-900/90 backdrop-blur-md border-b border-stone-700/50 sticky top-0 z-20">
-          <div className="max-w-7xl mx-auto px-6 py-4">
+        <nav className="bg-stone-900/95 border-b border-stone-700/50 z-20 flex-shrink-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
             <div className="flex items-center justify-between">
               {/* Logo */}
-              <div className="flex items-center gap-3">
-                <Compass className="size-8 text-amber-400" />
-                <h1 className="text-amber-100 text-2xl font-bold">TOTH-25</h1>
+              <div className="flex items-center gap-2">
+                <Compass className="size-6 sm:size-7 text-amber-400" />
+                <h1 className="text-amber-100 text-lg sm:text-xl font-bold">TOTH-25</h1>
               </div>
 
               {/* Profile Section */}
               <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="flex items-center gap-3 px-4 py-2 bg-stone-800/60 hover:bg-stone-800 rounded-lg transition-colors border border-stone-700/50"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-stone-800/60 hover:bg-stone-800 rounded-lg transition-colors border border-stone-700/50"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-amber-600 rounded-full flex items-center justify-center">
-                      <User className="size-5 text-white" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-amber-600 rounded-full flex items-center justify-center">
+                      <User className="size-4 text-white" />
                     </div>
                     <div className="text-left hidden sm:block">
-                      <p className="text-amber-100 text-sm font-semibold">
+                      <p className="text-amber-100 text-xs font-semibold">
                         {user?.fullName}
                       </p>
-                      <p className="text-amber-200/60 text-xs">
+                      <p className="text-amber-200/60 text-[10px]">
                         {user?.department}
                       </p>
                     </div>
                   </div>
-                  <ChevronDown className={`size-4 text-amber-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`size-3 text-amber-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Dropdown Menu */}
                 {showProfileMenu && (
-                  <div className="absolute right-0 mt-2 w-72 bg-stone-900/95 backdrop-blur-md border border-stone-700/50 rounded-lg shadow-2xl overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-72 bg-stone-900/98 border border-stone-700/50 rounded-lg shadow-2xl overflow-hidden">
                     {/* User Info Header */}
                     <div className="px-4 py-3 bg-stone-800/50 border-b border-stone-700/50">
                       <div className="flex items-center gap-3">
@@ -163,26 +173,24 @@ function DashboardContent() {
                     <div className="p-2">
                       {user?.isAdmin && (
                         <>
-                          <button
-                            onClick={() => {
-                              router.push("/admin/dashboard");
-                              setShowProfileMenu(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-purple-200 hover:bg-purple-900/40 rounded-lg transition-colors"
-                          >
-                            <Shield className="size-4" />
-                            <span className="text-sm">Admin Panel</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              router.push("/leaderboard");
-                              setShowProfileMenu(false);
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-purple-200 hover:bg-purple-900/40 rounded-lg transition-colors"
-                          >
-                            <Users className="size-4" />
-                            <span className="text-sm">Leaderboard</span>
-                          </button>
+                          <Link href="/admin/dashboard">
+                            <button
+                              onClick={() => setShowProfileMenu(false)}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-purple-200 hover:bg-purple-900/40 rounded-lg transition-colors"
+                            >
+                              <Shield className="size-4" />
+                              <span className="text-sm">Admin Panel</span>
+                            </button>
+                          </Link>
+                          <Link href="/leaderboard">
+                            <button
+                              onClick={() => setShowProfileMenu(false)}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-purple-200 hover:bg-purple-900/40 rounded-lg transition-colors"
+                            >
+                              <Users className="size-4" />
+                              <span className="text-sm">Leaderboard</span>
+                            </button>
+                          </Link>
                         </>
                       )}
                       <button
@@ -201,32 +209,30 @@ function DashboardContent() {
         </nav>
 
         {/* Main Content */}
-        <div className="px-6 py-8">
-          <div className="max-w-2xl mx-auto">
-            {/* Welcome Message */}
-            <div className="mb-8">
-              <h2 className="text-amber-100 text-2xl font-semibold mb-2">
-                Welcome back, {user?.fullName?.split(' ')[0] || "Seeker"}! 👋
+        <div className="flex-1 flex items-center justify-center px-4 py-4 overflow-hidden">
+          <div className="max-w-xl w-full">
+            {/* Welcome Message - Compact */}
+            <div className="mb-4 text-center">
+              <h2 className="text-amber-100 text-xl sm:text-2xl font-semibold mb-1">
+                Welcome, {user?.fullName?.split(' ')[0] || "Seeker"}! 👋
               </h2>
-              <p className="text-amber-100/70">
-                Ready to continue your treasure hunt adventure?
+              <p className="text-amber-100/70 text-sm">
+                Ready for your next adventure?
               </p>
             </div>
 
-            {/* Main Scan Button - Centered and Large for Mobile */}
-            <div className="mb-8">
-              <div 
-                className="bg-linear-to-br from-amber-600/80 to-amber-800/80 rounded-2xl border border-amber-500/50 p-12 shadow-2xl transform hover:scale-105 transition-transform cursor-pointer active:scale-95"
-                onClick={() => setShowScanner(true)}
-              >
-                <ScanLine className="size-24 text-white mb-6 mx-auto" />
-                <h2 className="text-white text-3xl font-bold text-center mb-3">
-                  Scan QR Code
-                </h2>
-                <p className="text-amber-100 text-center text-lg">
-                  Find and scan QR codes to unlock riddles
-                </p>
-              </div>
+            {/* Main Scan Button - Centered and Responsive */}
+            <div 
+              className="bg-linear-to-br from-amber-600/80 to-amber-800/80 rounded-2xl border border-amber-500/50 p-8 sm:p-12 shadow-2xl transform hover:scale-105 transition-transform cursor-pointer active:scale-95"
+              onClick={() => setShowScanner(true)}
+            >
+              <ScanLine className="size-16 sm:size-20 text-white mb-4 mx-auto" />
+              <h2 className="text-white text-2xl sm:text-3xl font-bold text-center mb-2">
+                Scan QR Code
+              </h2>
+              <p className="text-amber-100 text-center text-sm sm:text-base">
+                Find and scan QR codes to unlock riddles
+              </p>
             </div>
           </div>
         </div>

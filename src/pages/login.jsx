@@ -122,14 +122,15 @@ export default function Login() {
       <div
         className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700"
         style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1598177183267-28a7765536de?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhbmNpZW50JTIwdGVtcGxlJTIwcnVpbnMlMjBzdG9uZXxlbnwxfHx8fDE3NjYyNTk3MDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')`,
+          backgroundImage: "url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2070')",
+          filter: "brightness(0.4)",
           opacity: mounted ? 1 : 0,
         }}
       />
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="fixed inset-0 bg-black/60" />
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-6">
-        <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl backdrop-blur-md shadow-xl border border-amber-800/30 transition-all duration-500" style={{ 
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl shadow-xl border border-amber-800/30 transition-all duration-500" style={{ 
           opacity: mounted ? 1 : 0,
           transform: mounted ? 'translateY(0)' : 'translateY(20px)'
         }}>
