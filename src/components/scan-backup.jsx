@@ -1,23 +1,32 @@
 // components/scan.jsx
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { X, Sparkles, Trophy } from "lucide-react";
+import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera } from "lucide-react"; 
 import { scanQR } from "@/utils/api";
 
 export default function Scan({ onClose }) {
+  const router = useRouter();
   const videoRef = useRef(null);
   const readerRef = useRef(null);
+  const hasScannedRef = useRef(false);
 
-  const [scannedData, setScannedData] = useState("");
-  const [riddleData, setRiddleData] = useState(null);
   const [error, setError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("Processing...");
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [availableCameras, setAvailableCameras] = useState([]);
+  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+  const videoStreamRef = useRef(null);
 
   useEffect(() => {
+    // Detect if mobile device
+    setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    
+    // Initialize Camera
     readerRef.current = new BrowserQRCodeReader();
-
-    // wait for DOM paint so videoRef exists
     const timeout = setTimeout(() => {
       startScanning();
     }, 300);
@@ -33,8 +42,6 @@ export default function Scan({ onClose }) {
 
     try {
       setError("");
-      setScannedData("");
-      setRiddleData(null);
       setIsScanning(true);
 
       const devices = await BrowserQRCodeReader.listVideoInputDevices();
@@ -45,71 +52,198 @@ export default function Scan({ onClose }) {
         return;
       }
 
-      const backCamera =
-        devices.find((d) => d.label.toLowerCase().includes("back")) ||
-        devices[0];
+      // Store available cameras
+      setAvailableCameras(devices);
+
+      // Select camera based on device type and current index
+      let selectedCamera;
+      let videoConstraints;
+      
+      if (currentCameraIndex === 0 && isMobile) {
+        // Mobile: prefer back camera initially
+        // First try using facingMode to get back camera
+        try {
+          const testStream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: { exact: "environment" } } 
+          });
+          testStream.getTracks().forEach(track => track.stop());
+          
+          // If successful, find the back camera from devices
+          const backCamera = devices.find((d) => {
+            const label = d.label.toLowerCase();
+            return label.includes("back") || 
+                   label.includes("rear") ||
+                   label.includes("environment") ||
+                   label.includes("facing back");
+          });
+          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
+        } catch {
+          // Fallback: try to find back camera by label or use second camera
+          const backCamera = devices.find((d) => {
+            const label = d.label.toLowerCase();
+            return label.includes("back") || 
+                   label.includes("rear") ||
+                   label.includes("environment") ||
+                   label.includes("facing back");
+          });
+          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
+        }
+      } else {
+        // Use camera by index (for switching)
+        selectedCamera = devices[currentCameraIndex % devices.length];
+      }
+
+      console.log("Selected camera:", selectedCamera.label, "Device ID:", selectedCamera.deviceId);
 
       await readerRef.current.decodeFromVideoDevice(
-        backCamera.deviceId,
+        selectedCamera.deviceId,
         videoRef.current,
         (result, err) => {
-          if (result) {
+          if (result && !hasScannedRef.current) {
+            hasScannedRef.current = true;
             const text = result.getText();
-            setScannedData(text);
             setIsScanning(false);
             stopScanning();
             handleQRScan(text);
           }
-
           if (err && err.name !== "NotFoundException") {
             console.error(err);
           }
         }
       );
+
+      // Store video stream for torch control
+      if (videoRef.current && videoRef.current.srcObject) {
+        videoStreamRef.current = videoRef.current.srcObject;
+      }
     } catch (e) {
-      console.error(e);
-      setError("Camera permission denied or unavailable");
+      console.error("Camera error:", e);
+      if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
+        setError("Camera permission denied. Please allow camera access.");
+      } else if (e.name === "NotFoundError") {
+        setError("No camera found on this device");
+      } else if (e.name === "NotReadableError") {
+        setError("Camera is being used by another app");
+      } else {
+        setError("Failed to start camera. Please try again.");
+      }
       setIsScanning(false);
     }
   };
 
+  // function to check if it is a meme link
+  const isExternalUrl = (string) => {
+    try {
+      const url = new URL(string);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch (_) {
+      return false;
+    }
+  };
+
   const handleQRScan = async (qrData) => {
-    setLoading(true);
     setError("");
+    setLoading(true);
 
     try {
-      // Parse QR data - expecting just riddleId
-      const riddleId = parseInt(qrData);
-      
-      if (isNaN(riddleId)) {
-        throw new Error("Invalid QR code format");
+      // Check for external URLs (easter eggs/memes)
+      if (isExternalUrl(qrData)) {
+        setLoadingMessage("Redirecting to external sector...");
+        window.location.href = qrData;
+        return;
       }
 
-      const response = await scanQR(riddleId);
+      // Send encrypted qrData to backend for decryption and verification
+      setLoadingMessage("Verifying QR code...");
+
+      const response = await scanQR(qrData);
 
       if (!response.ok) {
-        throw new Error(response.data.error || response.data.message || "Failed to scan QR code");
+        throw new Error(response.data.error || response.data.message || "Scan failed");
       }
 
-      // Extract riddle data from response
-      setRiddleData(response.data);
+      // Get riddle data from response
+      const riddleData = response.data.riddle;
+      const isFirstScan = riddleData?.isFirstScan;
+      const riddleId = riddleData?.id;
+
+      if (!riddleId) {
+        throw new Error("Invalid response from server");
+      }
+
+      // Show different loading message based on whether it's a duplicate scan
+      if (!isFirstScan) {
+        setLoadingMessage("Already unlocked! Redirecting to riddle...");
+      } else {
+        setLoadingMessage("New riddle unlocked! +100 points");
+      }
+
+      // Brief delay to show the message
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Redirect to view riddle
+      await router.push(
+        {
+          pathname: '/viewriddles',
+          query: { id: riddleId }
+        },
+        '/viewriddles'
+      );
+      onClose();
+
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
 
   const stopScanning = () => {
     try {
-      readerRef.current?.reset();
-    } catch {}
+      // Stop video stream tracks
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop());
+        videoStreamRef.current = null;
+      }
+      
+      // Clear video element
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject;
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        videoRef.current.srcObject = null;
+      }
+      
+      setTorchEnabled(false);
+    } catch (e) {
+      console.error("Error stopping camera:", e);
+    }
+  };
+
+  const toggleTorch = async () => {
+    if (!videoStreamRef.current) return;
+    
+    try {
+      const track = videoStreamRef.current.getVideoTracks()[0];
+      const capabilities = track.getCapabilities();
+      
+      if (capabilities.torch) {
+        await track.applyConstraints({
+          advanced: [{ torch: !torchEnabled }]
+        });
+        setTorchEnabled(!torchEnabled);
+      } else {
+        setError("Flash not supported on this device");
+        setTimeout(() => setError(""), 2000);
+      }
+    } catch (err) {
+      console.error("Torch error:", err);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="relative w-full max-w-2xl mx-4">
-        {/* Close */}
         <button
           onClick={onClose}
           className="absolute -top-12 right-0 text-white hover:text-amber-400 transition-colors"
@@ -123,116 +257,145 @@ export default function Scan({ onClose }) {
             QR Code Scanner
           </h2>
 
-          {/* If riddle unlocked, show riddle data */}
-          {riddleData ? (
-            <div className="space-y-4">
-              {/* First scan badge */}
-              {riddleData.riddle?.isFirstScan && (
-                <div className="bg-green-600/20 border border-green-500 rounded-lg p-4 text-center">
-                  <Trophy className="size-8 text-yellow-400 mx-auto mb-2" />
-                  <p className="text-green-200 font-bold text-lg">
-                    New Riddle Scanned!
-                  </p>
-                  <p className="text-green-300 text-sm">{riddleData.message}</p>
-                </div>
-              )}
-
-              {!riddleData.riddle?.isFirstScan && (
-                <div className="bg-blue-600/20 border border-blue-500 rounded-lg p-3 text-center">
-                  <p className="text-blue-200 text-sm">
-                    {riddleData.message}
-                  </p>
-                </div>
-              )}
-
-              {/* Riddle content */}
-              <div className="bg-black/40 rounded-lg p-6 space-y-4">
-                <h3 className="text-amber-200 text-2xl font-bold text-center">
-                  Riddle #{riddleData.riddle?.orderNumber}
-                </h3>
-
-                <div className="border-t border-amber-700/50 pt-4">
-                  <p className="text-amber-100 text-lg leading-relaxed whitespace-pre-wrap">
-                    {riddleData.riddle?.puzzleText}
-                  </p>
-                </div>
-
-                <div className="text-center text-amber-400 text-sm">
-                  Scanned at: {new Date(riddleData.riddle?.scannedAt).toLocaleTimeString()}
+          {!loading && (
+            <div className="bg-black rounded-xl overflow-hidden mb-4 relative">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-[400px] md:h-[500px] object-cover"
+              />
+              
+              {/* Scanning frame with corners */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="relative w-64 h-64 md:w-80 md:h-80">
+                  {/* Corner decorations */}
+                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-500"></div>
+                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-amber-500"></div>
+                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-amber-500"></div>
+                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-500"></div>
+                  
+                  {/* Animated scanning line */}
+                  {isScanning && (
+                    <div className="absolute inset-0 overflow-hidden">
+                      <div className="h-1 w-full bg-linear-to-r from-transparent via-amber-400 to-transparent animate-scan-line shadow-[0_0_10px_rgba(251,191,36,0.8)]"></div>
+                    </div>
+                  )}
                 </div>
               </div>
+              
+              {/* Instructions overlay */}
+              <div className="absolute top-4 left-0 right-0 text-center">
+                <div className="inline-flex items-center gap-2 bg-black/80 px-4 py-2 rounded-lg backdrop-blur-sm border border-amber-500/30">
+                  {isMobile ? <Smartphone className="size-4 text-amber-400" /> : <Monitor className="size-4 text-amber-400" />}
+                  <p className="text-amber-300 text-sm font-medium">Hold QR code steady within frame</p>
+                </div>
+              </div>
+              
+              {/* Mobile camera controls */}
+              {isMobile && (
+                <div className="absolute bottom-4 right-4 flex gap-2 z-10">
+                  {/* Switch camera button */}
+                  {availableCameras.length > 1 && (
+                    <button
+                      onClick={async () => {
+                        if (availableCameras.length <= 1 || !isScanning) return;
+                        
+                        setIsScanning(false);
+                        stopScanning();
+                        
+                        // Wait for camera to fully release
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
+                        const nextIndex = (currentCameraIndex + 1) % availableCameras.length;
+                        setCurrentCameraIndex(nextIndex);
+                        
+                        // Reset and restart scanning
+                        hasScannedRef.current = false;
+                        startScanning();
+                      }}
+                      className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all disabled:opacity-50"
+                      title="Switch Camera"
+                      disabled={availableCameras.length <= 1}
+                    >
+                      <SwitchCamera className="size-5 text-amber-300" />
+                    </button>
+                  )}
+                  
+                  {/* Torch button */}
+                  <button
+                    onClick={toggleTorch}
+                    className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all"
+                    title={torchEnabled ? "Turn off flashlight" : "Turn on flashlight"}
+                  >
+                    {torchEnabled ? (
+                      <Flashlight className="size-5 text-amber-400" />
+                    ) : (
+                      <FlashlightOff className="size-5 text-amber-300" />
+                    )}
+                  </button>
+                </div>
+              )}
+              
+              {/* Tips */}
+              <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded-lg backdrop-blur-sm border border-amber-500/20">
+                <p className="text-amber-400/70 text-xs">
+                  {isMobile ? "💡 Use good lighting" : "💡 Move QR closer to camera"}
+                </p>
+              </div>
+              
+              <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-amber-300 text-sm font-semibold bg-black/70 px-4 py-2 rounded-lg backdrop-blur-sm">
+                {isScanning ? "Scanning..." : "Ready to scan"}
+              </p>
+            </div>
+          )}
 
-              {/* Actions */}
-              <div className="flex gap-3">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition-colors"
-                >
-                  Continue Hunt
-                </button>
+          {loading && (
+            <div className="bg-black rounded-xl overflow-hidden mb-4 h-[300px] flex items-center justify-center">
+              <div className="text-center">
+                {loadingMessage.includes("external") ? (
+                  <Globe className="animate-pulse size-12 text-blue-400 mx-auto mb-4" />
+                ) : (
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
+                )}
+                <p className={loadingMessage.includes("external") ? "text-blue-300" : "text-amber-200"}>
+                  {loadingMessage}
+                </p>
               </div>
             </div>
-          ) : (
-            <>
-              {/* Camera view (only show when scanning) */}
-              {!loading && (
-                <div className="bg-black rounded-xl overflow-hidden mb-4">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-[300px] object-cover"
-                  />
-                </div>
-              )}
-
-              {/* Loading */}
-              {loading && (
-                <div className="bg-black rounded-xl overflow-hidden mb-4 h-[300px] flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
-                    <p className="text-amber-200">Decrypting riddle...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Error */}
-              {error && (
-                <div className="p-3 bg-red-900/50 text-red-200 rounded-lg text-center mb-4">
-                  {error}
-                </div>
-              )}
-
-              {/* Scanned QR data (for debugging) */}
-              {scannedData && !loading && !riddleData && (
-                <div className="p-3 bg-amber-900/50 text-amber-200 rounded-lg break-all text-sm mb-4">
-                  Scanned: {scannedData}
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="flex gap-3">
-                <button
-                  onClick={onClose}
-                  className="flex-1 py-3 bg-stone-700 hover:bg-stone-600 text-white rounded-xl transition-colors"
-                >
-                  Close
-                </button>
-
-                <button
-                  onClick={startScanning}
-                  disabled={isScanning || loading}
-                  className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
-                >
-                  {isScanning ? "Scanning..." : "Scan Again"}
-                </button>
-              </div>
-            </>
           )}
+
+          {error && (
+            <div className="p-3 bg-red-900/50 text-red-200 rounded-lg text-center mb-4 border border-red-500/30 flex items-center justify-center gap-2">
+              <ShieldAlert className="size-5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 bg-stone-700 hover:bg-stone-600 text-white rounded-xl transition-colors"
+            >
+              Abort
+            </button>
+
+            {!loading && (
+              <button
+                onClick={() => {
+                  hasScannedRef.current = false;
+                  startScanning();
+                }}
+                disabled={isScanning}
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+              >
+                {isScanning ? "Scanning..." : "Retry Scan"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

@@ -9,6 +9,7 @@ export default function Scan({ onClose }) {
   const router = useRouter();
   const videoRef = useRef(null);
   const readerRef = useRef(null);
+  const controlsRef = useRef(null);
   const hasScannedRef = useRef(false);
 
   const [error, setError] = useState("");
@@ -25,92 +26,69 @@ export default function Scan({ onClose }) {
     // Detect if mobile device
     setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     
-    // Initialize Camera
-    readerRef.current = new BrowserQRCodeReader();
-    const timeout = setTimeout(() => {
-      startScanning();
-    }, 300);
+    // Start immediately for better responsiveness
+    startScanning();
 
     return () => {
-      clearTimeout(timeout);
       stopScanning();
     };
   }, []);
 
   const startScanning = async () => {
+    // Create new reader instance every time to avoid stale data
+    readerRef.current = new BrowserQRCodeReader();
+
     if (!videoRef.current || !readerRef.current) return;
 
     try {
       setError("");
       setIsScanning(true);
 
-      const devices = await BrowserQRCodeReader.listVideoInputDevices();
+      const scanCallback = (result, err) => {
+        if (result && !hasScannedRef.current) {
+          hasScannedRef.current = true;
+          const text = result.getText();
+          // Don't stop scanning here, let handleQRScan manage state
+          handleQRScan(text);
+        }
+      };
 
-      if (!devices.length) {
-        setError("No camera found");
-        setIsScanning(false);
-        return;
-      }
-
-      // Store available cameras
-      setAvailableCameras(devices);
-
-      // Select camera based on device type and current index
-      let selectedCamera;
-      let videoConstraints;
+      // Fast initialization strategy:
+      // 1. If we haven't listed cameras yet, just ask for the environment camera directly.
+      //    This avoids the slow double-initialization of listing + checking capabilities.
+      // 2. If we HAVE listed cameras (e.g. user is switching), pick the specific one.
       
-      if (currentCameraIndex === 0 && isMobile) {
-        // Mobile: prefer back camera initially
-        // First try using facingMode to get back camera
-        try {
-          const testStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: { exact: "environment" } } 
-          });
-          testStream.getTracks().forEach(track => track.stop());
-          
-          // If successful, find the back camera from devices
-          const backCamera = devices.find((d) => {
-            const label = d.label.toLowerCase();
-            return label.includes("back") || 
-                   label.includes("rear") ||
-                   label.includes("environment") ||
-                   label.includes("facing back");
-          });
-          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
-        } catch {
-          // Fallback: try to find back camera by label or use second camera
-          const backCamera = devices.find((d) => {
-            const label = d.label.toLowerCase();
-            return label.includes("back") || 
-                   label.includes("rear") ||
-                   label.includes("environment") ||
-                   label.includes("facing back");
-          });
-          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
-        }
+      if (availableCameras.length > 0) {
+        // Specific camera selection (Switching mode)
+        const selectedCamera = availableCameras[currentCameraIndex % availableCameras.length];
+        
+        controlsRef.current = await readerRef.current.decodeFromVideoDevice(
+          selectedCamera.deviceId,
+          videoRef.current,
+          scanCallback
+        );
       } else {
-        // Use camera by index (for switching)
-        selectedCamera = devices[currentCameraIndex % devices.length];
+        // Initial Startup (Fast mode)
+        // standard constraints to prefer back camera
+        const constraints = { 
+          video: { 
+            facingMode: "environment" 
+          } 
+        };
+
+        controlsRef.current = await readerRef.current.decodeFromConstraints(
+          constraints,
+          videoRef.current,
+          scanCallback
+        );
+
+        // Populate camera list in background for switching later
+        BrowserQRCodeReader.listVideoInputDevices().then(devices => {
+          setAvailableCameras(devices);
+          // Try to sync current index if possible, otherwise default to 0
+          // This ensures if they click switch, it goes to the next one
+        }).catch(console.error);
       }
-
-      console.log("Selected camera:", selectedCamera.label, "Device ID:", selectedCamera.deviceId);
-
-      await readerRef.current.decodeFromVideoDevice(
-        selectedCamera.deviceId,
-        videoRef.current,
-        (result, err) => {
-          if (result && !hasScannedRef.current) {
-            hasScannedRef.current = true;
-            const text = result.getText();
-            setIsScanning(false);
-            stopScanning();
-            handleQRScan(text);
-          }
-          if (err && err.name !== "NotFoundException") {
-            console.error(err);
-          }
-        }
-      );
 
       // Store video stream for torch control
       if (videoRef.current && videoRef.current.srcObject) {
@@ -121,11 +99,9 @@ export default function Scan({ onClose }) {
       if (e.name === "NotAllowedError" || e.name === "PermissionDeniedError") {
         setError("Camera permission denied. Please allow camera access.");
       } else if (e.name === "NotFoundError") {
-        setError("No camera found on this device");
-      } else if (e.name === "NotReadableError") {
-        setError("Camera is being used by another app");
+        setError("No camera found/allowed");
       } else {
-        setError("Failed to start camera. Please try again.");
+        setError("Failed to start camera");
       }
       setIsScanning(false);
     }
@@ -142,12 +118,16 @@ export default function Scan({ onClose }) {
   };
 
   const handleQRScan = async (qrData) => {
+    // Prevent overlapping checks
+    if (loading) return; 
+
     setError("");
     setLoading(true);
 
     try {
       // Check for external URLs (easter eggs/memes)
       if (isExternalUrl(qrData)) {
+        stopScanning(); // Stop camera before redirecting
         setLoadingMessage("Redirecting to external sector...");
         window.location.href = qrData;
         return;
@@ -177,6 +157,8 @@ export default function Scan({ onClose }) {
       } else {
         setLoadingMessage("New riddle unlocked! +100 points");
       }
+      
+      stopScanning(); // Stop camera on success
 
       // Brief delay to show the message
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -192,13 +174,26 @@ export default function Scan({ onClose }) {
       onClose();
 
     } catch (err) {
+      // Show error but don't stop scanning
       setError(err.message);
       setLoading(false);
+      
+      // Allow re-scanning after a short delay
+      setTimeout(() => {
+         setError("");
+         hasScannedRef.current = false;
+      }, 2000);
     }
   };
 
   const stopScanning = () => {
     try {
+      // Use the controls object to stop the decoding loop properly
+      if (controlsRef.current) {
+        controlsRef.current.stop();
+        controlsRef.current = null;
+      }
+
       // Stop video stream tracks
       if (videoStreamRef.current) {
         videoStreamRef.current.getTracks().forEach(track => track.stop());
@@ -250,25 +245,42 @@ export default function Scan({ onClose }) {
         >
           <X className="size-8" />
         </button>
-
+        
         <div className="bg-linear-to-br from-amber-900/90 to-stone-900/90 rounded-2xl p-6 border border-amber-700/50">
           <h2 className="text-xl text-amber-100 text-center mb-4 flex items-center justify-center gap-2">
             <Sparkles className="size-5" />
             QR Code Scanner
           </h2>
 
-          {!loading && (
-            <div className="bg-black rounded-xl overflow-hidden mb-4 relative">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-[400px] md:h-[500px] object-cover"
-              />
-              
-              {/* Scanning frame with corners */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="bg-black rounded-xl overflow-hidden mb-4 relative min-h-[400px]">
+                {/* Always rendered video element */}
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-[400px] md:h-[500px] object-cover transition-opacity duration-300 ${loading ? 'opacity-50 blur-sm' : 'opacity-100'}`}
+                />
+
+                {loading && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                      <div className="text-center p-6 rounded-xl bg-black/60 border border-amber-500/30">
+                        {loadingMessage.includes("external") ? (
+                          <Globe className="animate-pulse size-12 text-blue-400 mx-auto mb-4" />
+                        ) : (
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
+                        )}
+                        <p className={loadingMessage.includes("external") ? "text-blue-300 font-medium" : "text-amber-200 font-medium"}>
+                          {loadingMessage}
+                        </p>
+                      </div>
+                    </div>
+                )}
+                
+                {/* Scanning frame with corners - Only show when NOT loading */}
+                {!loading && (
+                  <>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="relative w-64 h-64 md:w-80 md:h-80">
                   {/* Corner decorations */}
                   <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-amber-500"></div>
@@ -277,7 +289,7 @@ export default function Scan({ onClose }) {
                   <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-amber-500"></div>
                   
                   {/* Animated scanning line */}
-                  {isScanning && (
+                  {isScanning && !loading && (
                     <div className="absolute inset-0 overflow-hidden">
                       <div className="h-1 w-full bg-linear-to-r from-transparent via-amber-400 to-transparent animate-scan-line shadow-[0_0_10px_rgba(251,191,36,0.8)]"></div>
                     </div>
@@ -348,51 +360,24 @@ export default function Scan({ onClose }) {
               <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-amber-300 text-sm font-semibold bg-black/70 px-4 py-2 rounded-lg backdrop-blur-sm">
                 {isScanning ? "Scanning..." : "Ready to scan"}
               </p>
+              </>
+            )}
             </div>
-          )}
-
-          {loading && (
-            <div className="bg-black rounded-xl overflow-hidden mb-4 h-[300px] flex items-center justify-center">
-              <div className="text-center">
-                {loadingMessage.includes("external") ? (
-                  <Globe className="animate-pulse size-12 text-blue-400 mx-auto mb-4" />
-                ) : (
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
-                )}
-                <p className={loadingMessage.includes("external") ? "text-blue-300" : "text-amber-200"}>
-                  {loadingMessage}
-                </p>
-              </div>
-            </div>
-          )}
 
           {error && (
-            <div className="p-3 bg-red-900/50 text-red-200 rounded-lg text-center mb-4 border border-red-500/30 flex items-center justify-center gap-2">
-              <ShieldAlert className="size-5" />
-              <span>{error}</span>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3/4 p-4 bg-red-900/90 backdrop-blur-md text-red-100 rounded-xl text-center border-2 border-red-500 shadow-xl z-20 animate-bounce">
+              <ShieldAlert className="size-8 mx-auto mb-2 text-red-400" />
+              <p className="font-bold">{error}</p>
             </div>
           )}
 
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-3 bg-stone-700 hover:bg-stone-600 text-white rounded-xl transition-colors"
+              className="w-full py-3 bg-stone-700/80 hover:bg-stone-600 backdrop-blur-sm text-white rounded-xl transition-colors font-medium border border-stone-500/30"
             >
-              Abort
+              Close Scanner
             </button>
-
-            {!loading && (
-              <button
-                onClick={() => {
-                  hasScannedRef.current = false;
-                  startScanning();
-                }}
-                disabled={isScanning}
-                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
-              >
-                {isScanning ? "Scanning..." : "Retry Scan"}
-              </button>
-            )}
           </div>
         </div>
       </div>
