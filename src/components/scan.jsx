@@ -34,7 +34,7 @@ export default function Scan({ onClose }) {
     };
   }, []);
 
-  const startScanning = async () => {
+  const startScanning = async (overrideIndex = null) => {
     // Create new reader instance every time to avoid stale data
     readerRef.current = new BrowserQRCodeReader();
 
@@ -59,8 +59,9 @@ export default function Scan({ onClose }) {
       // 2. If we HAVE listed cameras (e.g. user is switching), pick the specific one.
       
       if (availableCameras.length > 0) {
+        const activeIndex = overrideIndex !== null ? overrideIndex : currentCameraIndex;
         // Specific camera selection (Switching mode)
-        const selectedCamera = availableCameras[currentCameraIndex % availableCameras.length];
+        const selectedCamera = availableCameras[activeIndex % availableCameras.length];
         
         controlsRef.current = await readerRef.current.decodeFromVideoDevice(
           selectedCamera.deviceId,
@@ -325,7 +326,7 @@ export default function Scan({ onClose }) {
                         
                         // Reset and restart scanning
                         hasScannedRef.current = false;
-                        startScanning();
+                        startScanning(nextIndex);
                       }}
                       className="p-3 bg-black/70 hover:bg-black/90 backdrop-blur-sm rounded-full border border-amber-500/30 transition-all disabled:opacity-50"
                       title="Switch Camera"
