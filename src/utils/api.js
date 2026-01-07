@@ -70,10 +70,18 @@ const fetchAPI = async (endpoint, options = {}) => {
 /**
  * Register new user (Step 1)
  */
-export const register = async (email, password, confirmPassword) => {
+export const register = async (email, password, confirmPassword, fullName, classRollNo, phoneNumber, department) => {
   return fetchAPI('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, confirmPassword }),
+    body: JSON.stringify({ 
+      email, 
+      password, 
+      confirmPassword,
+      fullName,
+      classRollNo,
+      phoneNumber,
+      department 
+    }),
   });
 };
 

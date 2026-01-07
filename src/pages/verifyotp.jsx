@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Compass, AlertCircle } from "lucide-react";
 import { verifyOTP, resendOTP } from "@/utils/api";
+import { saveToken, saveUser } from "@/utils/auth";
 
 export default function VerifyOtp() {
   const router = useRouter();
@@ -19,7 +20,6 @@ export default function VerifyOtp() {
     // Prefer email from query, fallback to localStorage
     if (emailQuery) {
       setEmail(emailQuery);
-      localStorage.setItem("email", emailQuery);
     } else {
       const storedEmail = localStorage.getItem("email");
       if (storedEmail) setEmail(storedEmail);
@@ -39,7 +39,7 @@ export default function VerifyOtp() {
     setLoading(true);
 
     try {
-      const response = await verifyOTP(email, otp);
+      const response = await verifyOTP(email.trim(), otp);
 
       if (!response.ok) {
         throw new Error(response.data.error || "OTP verification failed");
@@ -47,13 +47,10 @@ export default function VerifyOtp() {
 
       setSuccess(response.data.message || "Email verified successfully!");
 
-      // Save email in localStorage for complete profile
-      localStorage.setItem("email", email);
-
-      // Move to complete profile page after 1.5s
       setTimeout(() => {
-        router.push("/completeprofile");
+        router.push(`/completeprofile?email=${encodeURIComponent(email)}`);
       }, 1500);
+
     } catch (err) {
       setError(err.message);
     } finally {
