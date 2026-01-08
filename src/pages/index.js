@@ -1,4 +1,4 @@
-// pages/index.js - Redirect to landing page
+// pages/index.js - Landing page entry point
 import Landing from "./landing";
 
 export default function Home() {
