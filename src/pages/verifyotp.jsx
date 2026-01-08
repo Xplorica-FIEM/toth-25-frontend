@@ -75,42 +75,42 @@ export default function VerifyOtp() {
 
   const handleStartHunt = async () => {
     setPrefetching(true);
-    setPrefetchMessage("🗺️ Preparing your adventure...");
+    setPrefetchMessage("🗺️ Gathering ancient maps...");
     
     try {
-      // Check if IndexedDB is supported
+      // Check if browser supports offline mode
       if (!isIndexedDBSupported()) {
-        console.warn("⚠️ IndexedDB not supported - skipping cache");
-        setPrefetchMessage("🎯 Loading game...");
+        console.warn("⚠️ Offline mode not supported");
+        setPrefetchMessage("⚔️ Preparing your quest...");
         setTimeout(() => router.push("/dashboard"), 1000);
         return;
       }
 
-      // Step 1: Fetch encrypted riddles from backend
-      setPrefetchMessage("📦 Downloading riddles...");
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Step 1: Fetch riddles
+      setPrefetchMessage("🏴‍☠️ Decoding treasure clues...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const response = await prefetchRiddles();
       
       if (!response.ok || !response.data?.riddles) {
-        console.warn("⚠️ Prefetch failed - continuing without cache");
-        setPrefetchMessage("🎯 Loading game...");
+        console.warn("⚠️ Quest preparation incomplete");
+        setPrefetchMessage("⚔️ Preparing your quest...");
         setTimeout(() => router.push("/dashboard"), 1000);
         return;
       }
 
-      // Step 2: Cache riddles in IndexedDB
-      setPrefetchMessage("💾 Caching riddles for offline use...");
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Step 2: Prepare for offline play
+      setPrefetchMessage("⚓ Charting your course...");
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const cacheResult = await cacheRiddles(response.data.riddles);
       
       if (cacheResult.success) {
-        console.log(`✅ Cached ${cacheResult.count} riddles`);
+        console.log(`✅ Quest prepared with ${cacheResult.count} challenges`);
       }
 
-      // Step 3: Redirect to dashboard
-      setPrefetchMessage("🎉 Ready! Let the hunt begin...");
+      // Step 3: Begin adventure
+      setPrefetchMessage("💎 Opening the treasure vault...");
       await new Promise(resolve => setTimeout(resolve, 1200));
       
       router.push("/dashboard");
@@ -175,14 +175,24 @@ export default function VerifyOtp() {
           </div>
         )}
 
-        {/* Prefetching Loader */}
+        {/* Quest Preparation Animation */}
         {prefetching && (
-          <div className="p-6 bg-gradient-to-r from-amber-500/20 to-orange-500/20 rounded-lg border border-amber-400/30">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="animate-spin text-amber-400" size={40} />
-              <p className="text-amber-100 text-center font-medium">
+          <div className="p-8 bg-gradient-to-br from-amber-900/80 via-orange-900/80 to-red-900/80 rounded-xl border-2 border-amber-400/50 shadow-2xl animate-pulse">
+            <div className="flex flex-col items-center gap-6">
+              <div className="relative">
+                <Compass className="animate-spin text-amber-400" size={56} />
+                <div className="absolute inset-0 animate-ping">
+                  <Sparkles className="text-orange-400 opacity-50" size={56} />
+                </div>
+              </div>
+              <p className="text-amber-100 text-center font-bold text-lg animate-pulse">
                 {prefetchMessage}
               </p>
+              <div className="flex gap-2">
+                <div className="w-3 h-3 bg-amber-400 rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
+                <div className="w-3 h-3 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                <div className="w-3 h-3 bg-red-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+              </div>
             </div>
           </div>
         )}
@@ -192,14 +202,14 @@ export default function VerifyOtp() {
           <div className="space-y-4">
             <button
               onClick={handleStartHunt}
-              className="w-full py-4 bg-gradient-to-r from-amber-600 to-orange-600 rounded-lg text-white font-bold text-lg hover:from-amber-500 hover:to-orange-500 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg"
+              className="w-full py-4 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 rounded-lg text-white font-bold text-lg hover:from-amber-500 hover:via-orange-500 hover:to-red-500 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg animate-pulse"
             >
-              <Sparkles size={20} />
-              Start the Hunt!
-              <Sparkles size={20} />
+              <Sparkles size={20} className="animate-spin" />
+              🏴‍☠️ Begin Your Quest 🏴‍☠️
+              <Sparkles size={20} className="animate-spin" />
             </button>
-            <p className="text-amber-300/70 text-xs text-center">
-              Loading riddles for offline access...
+            <p className="text-amber-300/70 text-xs text-center animate-bounce">
+              ⚡ Your adventure awaits, brave hunter! ⚡
             </p>
           </div>
         ) : !verified && !prefetching ? (

@@ -190,7 +190,7 @@ export default function Scan({ onClose }) {
 
     try {
       // Step 1: Decrypt QR to get riddle id
-      setLoadingMessage("🔓 Decrypting QR code...");
+      setLoadingMessage("🔓 Deciphering ancient symbols...");
       const riddleId = await decryptQRData(qrData);
       
       if (!riddleId) {
@@ -198,7 +198,7 @@ export default function Scan({ onClose }) {
       }
 
       // Step 2: Check cache first (instant lookup)
-      setLoadingMessage("📦 Loading riddle...");
+      setLoadingMessage("📜 Searching treasure map...");
       const cachedRiddle = await getCachedRiddle(riddleId);
       
       let riddleData = null;
@@ -214,7 +214,7 @@ export default function Scan({ onClose }) {
       } else {
         console.log(`⚠️ Cache miss for riddle id: ${riddleId} - falling back to API`);
         // Fallback: Call backend API
-        setLoadingMessage("🌐 Fetching from server...");
+        setLoadingMessage("� Consulting the ancient oracle...");
         const response = await scanQR(qrData);
 
         if (!response.ok) {
@@ -230,7 +230,7 @@ export default function Scan({ onClose }) {
 
       // riddleId is already the correct id from QR decryption
 
-      setLoadingMessage("✨ Loading riddle...");
+      setLoadingMessage("✨ Revealing the mystery...");
 
       // Cache the riddle ID for faster page loads
       localStorage.setItem('currentRiddleId', riddleId);
@@ -332,19 +332,19 @@ export default function Scan({ onClose }) {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl text-amber-100 flex items-center gap-2">
               <Sparkles className="size-5" />
-              QR Code Scanner
+              🗺️ Treasure Marker Scanner
             </h2>
-            {/* Offline indicator */}
+            {/* Quest status indicator */}
             {isOffline && (
               <div className="flex items-center gap-1 text-xs text-red-400 bg-red-500/20 px-2 py-1 rounded">
                 <WifiOff className="size-3" />
-                Offline
+                Solo Mode
               </div>
             )}
             {!isOffline && (
               <div className="flex items-center gap-1 text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
                 <Wifi className="size-3" />
-                Online
+                Connected
               </div>
             )}
           </div>
@@ -386,7 +386,7 @@ export default function Scan({ onClose }) {
               <div className="absolute top-4 left-0 right-0 text-center">
                 <div className="inline-flex items-center gap-2 bg-black/90 px-4 py-2 rounded-lg border border-amber-500/30">
                   {isMobile ? <Smartphone className="size-4 text-amber-400" /> : <Monitor className="size-4 text-amber-400" />}
-                  <p className="text-amber-300 text-sm font-medium">Hold QR code steady within frame</p>
+                  <p className="text-amber-300 text-sm font-medium">🗺️ Align the treasure marker within frame</p>
                 </div>
               </div>
               
@@ -438,12 +438,12 @@ export default function Scan({ onClose }) {
               {/* Tips */}
               <div className="absolute bottom-4 left-4 bg-black/80 px-3 py-2 rounded-lg border border-amber-500/20">
                 <p className="text-amber-400/70 text-xs">
-                  {isMobile ? "💡 Use good lighting" : "💡 Move QR closer to camera"}
+                  {isMobile ? "💡 Seek good lighting" : "💡 Bring marker closer"}
                 </p>
               </div>
               
               <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-amber-300 text-sm font-semibold bg-black/80 px-4 py-2 rounded-lg">
-                {isScanning ? "Scanning..." : "Ready to scan"}
+                {isScanning ? "🔍 Searching..." : "⚡ Ready to Hunt"}
               </p>
             </div>
           )}
@@ -451,12 +451,12 @@ export default function Scan({ onClose }) {
           {loading && (
             <div className="bg-black rounded-xl overflow-hidden mb-4 h-[300px] flex items-center justify-center">
               <div className="text-center">
-                {loadingMessage.includes("external") ? (
-                  <Globe className="animate-pulse size-12 text-blue-400 mx-auto mb-4" />
+                {loadingMessage.includes("oracle") ? (
+                  <Globe className="animate-pulse size-12 text-amber-400 mx-auto mb-4" />
                 ) : (
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
                 )}
-                <p className={loadingMessage.includes("external") ? "text-blue-300" : "text-amber-200"}>
+                <p className={loadingMessage.includes("oracle") ? "text-amber-300 font-medium" : "text-amber-200 font-medium"}>
                   {loadingMessage}
                 </p>
               </div>
@@ -473,9 +473,9 @@ export default function Scan({ onClose }) {
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-3 bg-stone-700 hover:bg-stone-600 text-white rounded-xl transition-colors"
+              className="flex-1 py-3 bg-stone-700 hover:bg-stone-600 text-white rounded-xl transition-colors font-medium"
             >
-              Abort
+              ⚔️ Abandon
             </button>
 
             {!loading && (
@@ -485,9 +485,9 @@ export default function Scan({ onClose }) {
                   startScanning();
                 }}
                 disabled={isScanning}
-                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900 disabled:cursor-not-allowed text-white rounded-xl transition-colors"
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 disabled:bg-amber-900 disabled:cursor-not-allowed text-white rounded-xl transition-colors font-medium"
               >
-                {isScanning ? "Scanning..." : "Retry Scan"}
+                {isScanning ? "🔍 Searching..." : "🔄 Search Again"}
               </button>
             )}
           </div>

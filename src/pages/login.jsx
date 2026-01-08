@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { Compass, AlertCircle } from "lucide-react";
+import { Compass, AlertCircle, Map, Anchor, Key, Shield } from "lucide-react";
 import { login } from "@/utils/api";
 import { saveToken, saveUser, isAuthenticated, isAdmin } from "@/utils/auth";
 
@@ -118,82 +118,160 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen relative">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated Background */}
       <div
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700"
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
         style={{
           backgroundImage: "url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2070')",
-          filter: "brightness(0.4)",
+          filter: "brightness(0.35) saturate(1.2)",
           opacity: mounted ? 1 : 0,
         }}
       />
-      <div className="fixed inset-0 bg-black/60" />
+      
+      {/* Floating Treasure Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-16 text-amber-400/15 animate-pulse" style={{animationDelay: '0s'}}>
+          <Map size={40} className="animate-float" />
+        </div>
+        <div className="absolute top-40 right-24 text-amber-400/15 animate-pulse" style={{animationDelay: '1.5s'}}>
+          <Anchor size={36} className="animate-float" />
+        </div>
+        <div className="absolute bottom-32 left-32 text-amber-400/15 animate-pulse" style={{animationDelay: '0.7s'}}>
+          <Key size={34} className="animate-float" />
+        </div>
+        <div className="absolute bottom-40 right-16 text-amber-400/15 animate-pulse" style={{animationDelay: '2s'}}>
+          <Shield size={38} className="animate-float" />
+        </div>
+      </div>
+      
+      {/* Vignette Overlay */}
+      <div className="fixed inset-0 bg-gradient-radial from-transparent via-black/40 to-black/70" />
 
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <div className="w-full max-w-md p-8 bg-amber-900/60 rounded-xl shadow-xl border border-amber-800/30 transition-all duration-500" style={{ 
+      <div className="min-h-screen flex items-center justify-center px-6 relative z-10">
+        <div className="w-full max-w-md p-8 bg-gradient-to-br from-amber-900/70 via-orange-900/60 to-amber-900/70 rounded-2xl shadow-2xl border-2 border-amber-600/40 backdrop-blur-sm transition-all duration-700" style={{ 
           opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0)' : 'translateY(20px)'
+          transform: mounted ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.9)'
         }}>
-          <div className="text-center mb-8">
-            <Compass className="mx-auto text-amber-400" size={42} />
-            <h1 className="text-amber-100 text-2xl mt-2 font-serif tracking-wider">
-             Treasure Of The Hunt
+          {/* Decorative Corners */}
+          <div className="absolute -top-2 -left-2 w-20 h-20 border-t-4 border-l-4 border-amber-400/60 rounded-tl-2xl"></div>
+          <div className="absolute -top-2 -right-2 w-20 h-20 border-t-4 border-r-4 border-amber-400/60 rounded-tr-2xl"></div>
+          <div className="absolute -bottom-2 -left-2 w-20 h-20 border-b-4 border-l-4 border-amber-400/60 rounded-bl-2xl"></div>
+          <div className="absolute -bottom-2 -right-2 w-20 h-20 border-b-4 border-r-4 border-amber-400/60 rounded-br-2xl"></div>
+          
+          {/* Header */}
+          <div className="text-center mb-8 relative">
+            <div className="relative inline-block mb-4">
+              <Compass className="mx-auto text-amber-400 animate-spin-slow" size={56} />
+              <div className="absolute inset-0 animate-ping opacity-20">
+                <Compass className="text-amber-300" size={56} />
+              </div>
+            </div>
+            <h1 className="text-amber-100 text-3xl font-bold tracking-wide drop-shadow-lg">
+              ⚓ Hunter's Portal ⚓
             </h1>
+            <p className="text-amber-200/80 text-sm mt-2 font-medium">
+              🗺️ Continue your legendary quest!
+            </p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
-              <div className="bg-red-900/50 border border-red-500/50 p-3 rounded text-red-200 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                <AlertCircle size={16} />
-                <span>{error}</span>
+              <div className="bg-red-500/30 border-2 border-red-400/50 p-3 rounded-lg text-red-100 text-sm flex items-center gap-2 animate-shake shadow-lg">
+                <AlertCircle size={18} />
+                <span className="font-medium">🚨 {error}</span>
               </div>
             )}
 
-            <div className="space-y-1">
-              <label className="text-amber-200/80 text-sm ml-1">Email</label>
+            <div className="space-y-2 relative group">
+              <label className="text-amber-200/90 text-sm ml-1 font-semibold flex items-center gap-2">
+                ✉️ Adventurer's Email
+              </label>
               <input
                 name="email"
                 type="email"
-                placeholder="seeker@example.com"
+                placeholder="your.email@quest.com"
                 value={form.email}
                 onChange={handleChange}
                 required
-                className="w-full p-3 rounded bg-black/40 text-white placeholder-amber-500/50 border border-amber-900/50 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all"
+                className="w-full p-3.5 rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/40 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all group-hover:border-amber-500/50 shadow-inner"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-amber-200/80 text-sm ml-1">Password</label>
+            <div className="space-y-2 relative group">
+              <label className="text-amber-200/90 text-sm ml-1 font-semibold flex items-center gap-2">
+                🔐 Secret Code
+              </label>
               <input
                 name="password"
                 type="password"
-                placeholder="••••••••"
+                placeholder="••••••••••"
                 value={form.password}
                 onChange={handleChange}
                 required
-                className="w-full p-3 rounded bg-black/40 text-white placeholder-amber-500/50 border border-amber-900/50 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 transition-all"
+                className="w-full p-3.5 rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/40 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all group-hover:border-amber-500/50 shadow-inner"
               />
             </div>
 
             <button
+              type="submit"
               disabled={loading}
-              className="w-full py-3 mt-4 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded shadow-lg shadow-amber-900/50 disabled:opacity-60 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+              className="w-full py-4 mt-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 hover:from-amber-500 hover:via-orange-500 hover:to-amber-500 text-white font-bold text-lg rounded-lg shadow-lg border-2 border-amber-400/50 hover:shadow-amber-500/50 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
-              {loading ? "Entering the Hunt..." : "Enter the Hunt"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Compass className="animate-spin" size={22} />
+                  ⚔️ Entering...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  🏴‍☠️ Begin the Adventure 🏴‍☠️
+                </span>
+              )}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-amber-200/60 text-sm">
-            New adventurer?{" "}
+          {/* Footer */}
+          <div className="mt-8 pt-6 border-t-2 border-amber-600/30 text-center text-amber-200/70 text-sm">
+            <span>New to the quest? </span>
             <Link
               href="/register"
-              className="text-amber-400 hover:text-amber-300 underline underline-offset-4"
+              className="text-amber-400 hover:text-amber-300 underline underline-offset-4 font-semibold"
             >
-              Join the Hunt
+              ⚓ Join the Hunt
             </Link>
           </div>
         </div>
       </div>
+      
+      {/* Custom Animations */}
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-25px) rotate(5deg); }
+        }
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+          20%, 40%, 60%, 80% { transform: translateX(8px); }
+        }
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+        .animate-spin-slow {
+          animation: spin-slow 10s linear infinite;
+        }
+        .animate-shake {
+          animation: shake 0.6s ease-in-out;
+        }
+        .bg-gradient-radial {
+          background: radial-gradient(circle at center, var(--tw-gradient-stops));
+        }
+      `}</style>
     </div>
   );
 }
