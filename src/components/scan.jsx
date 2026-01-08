@@ -2,8 +2,10 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera } from "lucide-react"; 
-import { scanQR } from "@/utils/api";
+import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera, Wifi, WifiOff } from "lucide-react"; 
+import { scanQR, syncOfflineScans } from "@/utils/api";
+import { getCachedRiddle, queueOfflineScan, getOfflineScans } from "@/utils/cache";
+import { decryptQRData, decryptRiddleData } from "@/utils/encryption";
 
 export default function Scan({ onClose }) {
   const router = useRouter();
@@ -19,6 +21,7 @@ export default function Scan({ onClose }) {
   const [isMobile, setIsMobile] = useState(false);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
+  const [isOffline, setIsOffline] = useState(false);
   const videoStreamRef = useRef(null);
   const scanIntervalRef = useRef(null);
 
@@ -26,14 +29,53 @@ export default function Scan({ onClose }) {
     // Detect if mobile device
     setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     
+    // Monitor online/offline status
+    const handleOnline = () => {
+      setIsOffline(false);
+      syncOfflineScansInBackground();
+    };
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    setIsOffline(!navigator.onLine);
+    
+    // Try to sync offline scans on mount
+    syncOfflineScansInBackground();
+    
     // Initialize Camera immediately (no delay)
     readerRef.current = new BrowserQRCodeReader();
     startScanning(); // Start immediately for faster interaction
 
     return () => {
       stopScanning();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  // Background sync for offline scans
+  const syncOfflineScansInBackground = async () => {
+    try {
+      const offlineScans = await getOfflineScans();
+      if (offlineScans.length === 0) return;
+      
+      console.log(`📡 Syncing ${offlineScans.length} offline scans...`);
+      const response = await syncOfflineScans(offlineScans.map(s => ({
+        riddleId: s.riddleId,
+        scannedAt: s.scannedAt
+      })));
+      
+      if (response.ok && response.data) {
+        console.log(`✅ Synced ${response.data.synced} scans`);
+        // Clear synced scans from queue
+        const { clearOfflineScans } = await import('@/utils/cache');
+        await clearOfflineScans();
+      }
+    } catch (error) {
+      console.log('⚠️ Offline sync failed - will retry later');
+    }
+  };
 
   const startScanning = async () => {
     if (!videoRef.current || !readerRef.current) return;
@@ -147,31 +189,63 @@ export default function Scan({ onClose }) {
     setLoading(true);
 
     try {
-      setLoadingMessage("Verifying QR code...");
-
-      const response = await scanQR(qrData);
-
-      if (!response.ok) {
-        throw new Error(response.data.error || response.data.message || "Scan failed");
+      // Step 1: Decrypt QR to get shortId
+      setLoadingMessage("🔓 Decrypting QR code...");
+      const shortId = await decryptQRData(qrData);
+      
+      if (!shortId) {
+        throw new Error("Invalid QR code format");
       }
 
-      // Get riddle data from response
-      const riddleData = response.data.riddle;
-      const isFirstScan = riddleData?.isFirstScan;
-      const riddleId = riddleData?.id;
+      // Step 2: Check cache first (instant lookup)
+      setLoadingMessage("📦 Loading riddle...");
+      const cachedRiddle = await getCachedRiddle(shortId);
+      
+      let riddleData = null;
+      let riddleId = null;
+      
+      if (cachedRiddle) {
+        console.log(`✅ Cache hit for shortId: ${shortId}`);
+        // Decrypt cached riddle data
+        const decrypted = await decryptRiddleData(cachedRiddle.encryptedData);
+        riddleData = decrypted;
+        
+        // Record scan to backend (async, non-blocking)
+        recordScanAsync(qrData, shortId);
+      } else {
+        console.log(`⚠️ Cache miss for shortId: ${shortId} - falling back to API`);
+        // Fallback: Call backend API
+        setLoadingMessage("🌐 Fetching from server...");
+        const response = await scanQR(qrData);
 
-      if (!riddleId) {
+        if (!response.ok) {
+          throw new Error(response.data.error || response.data.message || "Scan failed");
+        }
+
+        riddleData = response.data.riddle;
+        riddleId = riddleData?.id;
+      }
+
+      if (!riddleData) {
         throw new Error("Invalid response from server");
       }
 
-      // Generic loading message
-      setLoadingMessage(isFirstScan ? "New Riddle Unlocked!" : "Loading Riddle...");
+      // Get the riddle ID (use cached version if available, otherwise from API response)
+      if (!riddleId) {
+        // For cached riddles, we need to call the backend just to get the full riddle ID
+        // This is only needed for the /viewriddles page routing
+        // In a future optimization, we could store the full ID in the cache too
+        riddleId = await getRiddleIdByShortId(shortId);
+      }
+
+      setLoadingMessage("✨ Loading riddle...");
 
       // Cache the riddle ID for faster page loads
       localStorage.setItem('currentRiddleId', riddleId);
+      localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
 
       // Brief delay to show the message
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Redirect to view riddle
       await router.push(
@@ -184,8 +258,46 @@ export default function Scan({ onClose }) {
       onClose();
 
     } catch (err) {
+      console.error('❌ Scan error:', err);
       setError(err.message);
       setLoading(false);
+    }
+  };
+
+  // Record scan asynchronously (non-blocking)
+  const recordScanAsync = async (qrData, shortId) => {
+    try {
+      const response = await scanQR(qrData);
+      if (response.ok) {
+        console.log(`✅ Scan recorded for shortId: ${shortId}`);
+      }
+    } catch (error) {
+      console.log(`⚠️ Failed to record scan - queueing for offline sync`);
+      // Queue for offline sync
+      // We'll need the full riddle ID, so fetch it first
+      try {
+        const riddleId = await getRiddleIdByShortId(shortId);
+        await queueOfflineScan(riddleId);
+      } catch (e) {
+        console.error('Failed to queue offline scan:', e);
+      }
+    }
+  };
+
+  // Helper function to get full riddle ID from shortId
+  const getRiddleIdByShortId = async (shortId) => {
+    try {
+      // This requires a new backend endpoint or we use the existing scan endpoint
+      // For now, we'll rely on the scan endpoint which returns the full riddle data
+      const response = await scanQR(await import('@/utils/encryption').then(m => m.default.encrypt(shortId)));
+      if (response.ok && response.data.riddle) {
+        return response.data.riddle.id;
+      }
+      throw new Error('Failed to get riddle ID');
+    } catch (error) {
+      console.error('Error getting riddle ID:', error);
+      // Fallback: use shortId as ID (not ideal but prevents crash)
+      return shortId;
     }
   };
 
@@ -244,10 +356,25 @@ export default function Scan({ onClose }) {
         </button>
 
         <div className="bg-linear-to-br from-amber-900/90 to-stone-900/90 rounded-2xl p-6 border border-amber-700/50">
-          <h2 className="text-xl text-amber-100 text-center mb-4 flex items-center justify-center gap-2">
-            <Sparkles className="size-5" />
-            QR Code Scanner
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl text-amber-100 flex items-center gap-2">
+              <Sparkles className="size-5" />
+              QR Code Scanner
+            </h2>
+            {/* Offline indicator */}
+            {isOffline && (
+              <div className="flex items-center gap-1 text-xs text-red-400 bg-red-500/20 px-2 py-1 rounded">
+                <WifiOff className="size-3" />
+                Offline
+              </div>
+            )}
+            {!isOffline && (
+              <div className="flex items-center gap-1 text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded">
+                <Wifi className="size-3" />
+                Online
+              </div>
+            )}
+          </div>
 
           {!loading && (
             <div className="bg-black rounded-xl overflow-hidden mb-4 relative">

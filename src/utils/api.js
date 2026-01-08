@@ -173,6 +173,25 @@ export const getRiddlesMetadata = async () => {
 };
 
 /**
+ * Prefetch all encrypted riddles for offline caching
+ * Returns array of {shortId, encryptedData}
+ */
+export const prefetchRiddles = async () => {
+  return fetchAPI('/api/game/riddles-prefetch');
+};
+
+/**
+ * Sync offline scans to server
+ * @param {Array} scans - Array of {riddleId, scannedAt}
+ */
+export const syncOfflineScans = async (scans) => {
+  return fetchAPI('/api/scan/sync-offline', {
+    method: 'POST',
+    body: JSON.stringify({ scans }),
+  });
+};
+
+/**
  * Complete game
  */
 export const completeGame = async () => {
@@ -300,6 +319,8 @@ export default {
   getProgress,
   getMyScans,
   completeGame,
+  prefetchRiddles,
+  syncOfflineScans,
   
   // Leaderboard
   getLeaderboard,

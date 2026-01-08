@@ -109,9 +109,9 @@ export default function RegisterPage() {
         {/* Header */}
         <div className="text-center">
           <Compass className="mx-auto text-amber-400" size={36} />
-          <h1 className="text-amber-100 text-xl mt-1">Create an Account</h1>
+          <h1 className="text-amber-100 text-xl mt-1">Join the Hunt</h1>
           <p className="text-amber-200/70 text-xs mt-1">
-            Sign up to step into the world of mysteries!
+            Begin your adventure into the world of mysteries!
           </p>
         </div>
 
@@ -206,7 +206,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="w-full py-2.5 text-sm bg-amber-600 rounded text-white hover:bg-amber-500 disabled:opacity-50"
           >
-            {loading ? "Creating Account..." : "Register"}
+            {loading ? "Joining the Hunt..." : "Join the Hunt"}
           </button>
         </form>
 

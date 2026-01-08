@@ -179,17 +179,17 @@ export default function Login() {
               disabled={loading}
               className="w-full py-3 mt-4 bg-amber-600 hover:bg-amber-500 text-white font-medium rounded shadow-lg shadow-amber-900/50 disabled:opacity-60 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
             >
-              {loading ? "Unlocking..." : "Login"}
+              {loading ? "Entering the Hunt..." : "Enter the Hunt"}
             </button>
           </form>
 
           <div className="mt-6 text-center text-amber-200/60 text-sm">
-            New here?{" "}
+            New adventurer?{" "}
             <Link
               href="/register"
               className="text-amber-400 hover:text-amber-300 underline underline-offset-4"
             >
-              Create an account
+              Join the Hunt
             </Link>
           </div>
         </div>
