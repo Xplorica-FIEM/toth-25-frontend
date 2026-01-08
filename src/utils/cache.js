@@ -39,7 +39,7 @@ function initDB() {
 
 /**
  * Store encrypted riddles in IndexedDB
- * @param {Array} riddles - Array of {shortId, encryptedData}
+ * @param {Array} riddles - Array of {id, encryptedData}
  */
 export async function cacheRiddles(riddles) {
   try {
@@ -53,7 +53,7 @@ export async function cacheRiddles(riddles) {
     // Store each riddle
     for (const riddle of riddles) {
       await store.put({
-        shortId: riddle.shortId,
+        id: riddle.id,
         encryptedData: riddle.encryptedData,
         cachedAt: new Date().toISOString()
       });
@@ -70,18 +70,18 @@ export async function cacheRiddles(riddles) {
 }
 
 /**
- * Get encrypted riddle by shortId from cache
- * @param {string} shortId - The riddle shortId (e.g., "D8OTOG")
- * @returns {Promise<object|null>} - {shortId, encryptedData, cachedAt} or null
+ * Get encrypted riddle by id from cache
+ * @param {string} riddleId - The riddle id (e.g., "R7GPKX")
+ * @returns {Promise<object|null>} - {id, encryptedData, cachedAt} or null
  */
-export async function getCachedRiddle(shortId) {
+export async function getCachedRiddle(riddleId) {
   try {
     const db = await initDB();
     const transaction = db.transaction([RIDDLES_STORE], 'readonly');
     const store = transaction.objectStore(RIDDLES_STORE);
     
     return new Promise((resolve, reject) => {
-      const request = store.get(shortId);
+      const request = store.get(riddleId);
       request.onsuccess = () => resolve(request.result || null);
       request.onerror = () => reject(request.error);
     });

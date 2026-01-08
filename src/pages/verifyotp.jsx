@@ -177,7 +177,7 @@ export default function VerifyOtp() {
 
         {/* Quest Preparation Animation */}
         {prefetching && (
-          <div className="p-8 bg-gradient-to-br from-amber-900/80 via-orange-900/80 to-red-900/80 rounded-xl border-2 border-amber-400/50 shadow-2xl animate-pulse">
+          <div className="p-8 bg-linear-to-br from-amber-900/80 via-orange-900/80 to-red-900/80 rounded-xl border-2 border-amber-400/50 shadow-2xl animate-pulse">
             <div className="flex flex-col items-center gap-6">
               <div className="relative">
                 <Compass className="animate-spin text-amber-400" size={56} />
@@ -202,7 +202,7 @@ export default function VerifyOtp() {
           <div className="space-y-4">
             <button
               onClick={handleStartHunt}
-              className="w-full py-4 bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 rounded-lg text-white font-bold text-lg hover:from-amber-500 hover:via-orange-500 hover:to-red-500 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg animate-pulse"
+              className="w-full py-4 bg-linear-to-r from-amber-600 via-orange-600 to-red-600 rounded-lg text-white font-bold text-lg hover:from-amber-500 hover:via-orange-500 hover:to-red-500 transform hover:scale-105 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg animate-pulse"
             >
               <Sparkles size={20} className="animate-spin" />
               🏴‍☠️ Begin Your Quest 🏴‍☠️

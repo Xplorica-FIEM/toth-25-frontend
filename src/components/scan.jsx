@@ -22,6 +22,7 @@ export default function Scan({ onClose }) {
   const [availableCameras, setAvailableCameras] = useState([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
+  const [memeData, setMemeData] = useState(null);
   const videoStreamRef = useRef(null);
   const scanIntervalRef = useRef(null);
 
@@ -189,6 +190,30 @@ export default function Scan({ onClose }) {
     setLoading(true);
 
     try {
+      // Check if it's a meme riddle (simple 6-char ID, no encryption)
+      if (qrData.length === 6 && /^[A-Z0-9]{6}$/.test(qrData)) {
+        setLoadingMessage("🎭 Checking for surprises...");
+        
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:5000/api/meme-riddles/${qrData}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            // It's a meme riddle! Show the meme
+            setLoading(false);
+            showMemeModal(data.memeRiddle);
+            return;
+          }
+          // If not found (404), fall through to regular riddle logic
+        } catch (memeError) {
+          // Network error or other issue, fall through to regular riddle logic
+          console.log('Meme check failed, trying regular riddle');
+        }
+      }
+
       // Step 1: Decrypt QR to get riddle id
       setLoadingMessage("🔓 Deciphering ancient symbols...");
       const riddleId = await decryptQRData(qrData);
@@ -254,6 +279,19 @@ export default function Scan({ onClose }) {
       setError(err.message);
       setLoading(false);
     }
+  };
+
+  const showMemeModal = (meme) => {
+    setMemeData(meme);
+    stopScanning(); // Stop camera when showing meme
+  };
+
+  const closeMemeModal = () => {
+    setMemeData(null);
+    hasScannedRef.current = false;
+    // Navigate to dashboard instead of restarting scanner
+    router.push('/dashboard');
+    onClose();
   };
 
   // Record scan asynchronously (non-blocking)
@@ -493,6 +531,75 @@ export default function Scan({ onClose }) {
           </div>
         </div>
       </div>
+
+      {/* Meme Modal - Treasure Hunt Themed */}
+      {memeData && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/95 p-4">
+          <div className="max-w-2xl w-full bg-linear-to-br from-amber-50/95 via-yellow-50/95 to-amber-100/95 backdrop-blur-xl rounded-3xl border-4 border-amber-800/80 shadow-2xl overflow-hidden relative"
+            style={{
+              backgroundImage: 'url("data:image/svg+xml,%3Csvg width="200" height="200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" /%3E%3CfeColorMatrix type="saturate" values="0.1"/%3E%3C/filter%3E%3Crect width="200" height="200" filter="url(%23noise)" opacity="0.4" fill="%23d4a574"/%3E%3C/svg%3E")',
+              backgroundSize: '200px 200px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.1), 0 0 80px rgba(217, 119, 6, 0.3)'
+            }}>
+            
+            {/* Ancient decorative corners */}
+            <div className="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-amber-700/40 rounded-tl-3xl"></div>
+            <div className="absolute top-0 right-0 w-16 h-16 border-r-4 border-t-4 border-amber-700/40 rounded-tr-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-16 h-16 border-l-4 border-b-4 border-amber-700/40 rounded-bl-3xl"></div>
+            <div className="absolute bottom-0 right-0 w-16 h-16 border-r-4 border-b-4 border-amber-700/40 rounded-br-3xl"></div>
+
+            {/* Header */}
+            <div className="bg-linear-to-r from-amber-900 via-amber-800 to-amber-900 px-6 py-3 border-b-4 border-amber-950/50 relative">
+              <div className="absolute top-1 left-1 text-amber-300/30 text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>❦</div>
+              <div className="absolute top-1 right-1 text-amber-300/30 text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>❦</div>
+              
+              <h2 className="text-2xl sm:text-3xl font-bold text-amber-50 text-center" style={{fontFamily: 'Cinzel, serif', letterSpacing: '0.05em'}}>
+                🎭 A Curious Discovery! 🎭
+              </h2>
+              <p className="text-amber-200/70 text-sm sm:text-base text-center mt-1" style={{fontFamily: 'IM Fell English, serif'}}>
+                Thou hast stumbled upon a secret jest!
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 sm:p-8">
+              {/* Meme Image */}
+              <div className="mb-6 bg-amber-100/50 backdrop-blur-sm rounded-2xl p-4 border-4 border-amber-800/40 shadow-inner relative"
+                style={{
+                  backgroundImage: 'url("data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="paper"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" /%3E%3C/filter%3E%3Crect width="100" height="100" filter="url(%23paper)" opacity="0.15" /%3E%3C/svg%3E")',
+                  boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.15)'
+                }}>
+                <img 
+                  src={memeData.imageUrl} 
+                  alt={memeData.name}
+                  className="w-full rounded-xl border-2 border-amber-800/30 shadow-lg"
+                  onError={(e) => {
+                    e.target.src = 'https://via.placeholder.com/600x400?text=Image+Not+Found';
+                  }}
+                />
+              </div>
+
+              {/* Meme Caption */}
+              {memeData.caption && (
+                <div className="bg-amber-100/50 rounded-xl p-4 border-2 border-amber-800/30 mb-6">
+                  <p className="text-amber-950 text-center text-lg sm:text-xl font-bold" style={{fontFamily: 'IM Fell English, serif', fontStyle: 'italic'}}>
+                    {memeData.caption}
+                  </p>
+                </div>
+              )}
+
+              {/* Close Button */}
+              <button
+                onClick={closeMemeModal}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg border border-amber-400/50 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+                style={{fontFamily: 'Cinzel, serif'}}
+              >
+                ⚔️ Continue Thy Quest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Shield,
+  ImagePlus,
 } from "lucide-react";
 import { logout, getUser } from "@/utils/auth";
 
@@ -45,6 +46,7 @@ export default function AdminLayout({ children, activeTab }) {
     { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/admin/dashboard" },
     { id: "users", label: "Users", icon: Users, path: "/admin/users" },
     { id: "riddles", label: "Riddles", icon: Scroll, path: "/admin/riddles" },
+    { id: "meme-riddles", label: "Meme Riddles", icon: ImagePlus, path: "/admin/meme-riddles" },
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/admin/leaderboard" },
     { id: "statistics", label: "Statistics", icon: BarChart3, path: "/admin/statistics" },
   ];
@@ -115,7 +117,7 @@ export default function AdminLayout({ children, activeTab }) {
                     : "text-amber-200 hover:bg-stone-800"
                 }`}
               >
-                <Icon className="size-5 flex-shrink-0" />
+                <Icon className="size-5 shrink-0" />
                 {sidebarOpen && <span className="font-medium">{item.label}</span>}
               </button>
             );
@@ -136,7 +138,7 @@ export default function AdminLayout({ children, activeTab }) {
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-900/20 transition-colors"
           >
-            <LogOut className="size-5 flex-shrink-0" />
+            <LogOut className="size-5 shrink-0" />
             {sidebarOpen && <span className="font-medium">Logout</span>}
           </button>
         </div>

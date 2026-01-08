@@ -5,10 +5,11 @@ import { Users, Scroll, BarChart3, Trophy, Plus } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
 import { getAdminStats } from "@/utils/api";
+import useAdminStore from "@/store/adminStore";
 
 function AdminDashboardContent() {
   const router = useRouter();
-  const [stats, setStats] = useState(null);
+  const { stats, statsLoading, setStats, setStatsLoading } = useAdminStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,6 +18,7 @@ function AdminDashboardContent() {
 
   const fetchStats = async () => {
     setLoading(true);
+    setStatsLoading(true);
     try {
       const statsRes = await getAdminStats();
       console.log("Stats response:", statsRes);
@@ -30,6 +32,7 @@ function AdminDashboardContent() {
       console.error("Failed to fetch stats:", error);
     } finally {
       setLoading(false);
+      setStatsLoading(false);
     }
   };
 
@@ -73,7 +76,7 @@ function AdminDashboardContent() {
         {/* Quick Actions */}
         <div className="bg-stone-900 border border-stone-800 rounded-xl p-4 md:p-6">
           <h2 className="text-lg md:text-xl font-bold text-amber-100 mb-3 md:mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             <button
               onClick={() => router.push("/admin/riddles/create")}
               className="flex items-center justify-center md:justify-start gap-3 px-4 md:px-6 py-3 md:py-4 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors text-sm md:text-base"
@@ -90,7 +93,7 @@ function AdminDashboardContent() {
             </button>
             <button
               onClick={() => router.push("/admin/leaderboard")}
-              className="flex items-center justify-center md:justify-start gap-3 px-4 md:px-6 py-3 md:py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm md:text-base"
+              className="flex items-center justify-center md:justify-start gap-3 px-4 md:px-6 py-3 md:py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm md:text-base"
             >
               <Trophy className="size-5" />
               <span className="font-semibold">View Leaderboard</span>

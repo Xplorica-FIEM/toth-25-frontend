@@ -1,323 +1,344 @@
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
-import Link from "next/link";
-import { Compass, AlertCircle, Map, Scroll, Anchor, Ship } from "lucide-react";
-import { register } from "@/utils/api";
-import { isAuthenticated, isAdmin } from "@/utils/auth";
-import { DEPARTMENTS } from "@/constants/departments";
+// pages/register.jsx - Mobile-First Treasure Hunt Registration
+import { useState } from 'react';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
+import { UserPlus, Mail, Phone, User, Hash, Lock, Map, Anchor, Ship, Scroll, Compass } from 'lucide-react';
 
-export default function RegisterPage() {
+export default function Register() {
   const router = useRouter();
-  const { email: emailParam } = router.query;
-
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    fullName: "",
-    classRollNo: "",
-    phoneNumber: "",
-    department: "",
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    department: '',
+    classRollNo: '',
+    password: '',
+    confirmPassword: '',
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showMessage, setShowMessage] = useState(false);
 
-  useEffect(() => {
-    // Redirect if already authenticated
-    if (isAuthenticated()) {
-      if (isAdmin()) {
-        router.replace("/admin/dashboard");
-      } else {
-        router.replace("/dashboard");
-      }
-    }
-    
-    // Pre-fill email if coming from login redirect
-    if (emailParam && !form.email) {
-      setForm(prev => ({ ...prev, email: emailParam }));
-      setShowMessage(true);
-    }
-  }, [router, emailParam]);
+  const departments = [
+    { code: "CSE", name: "Computer Science & Engineering" },
+    { code: "ECE", name: "Electronics & Communication Engineering" },
+    { code: "EEE", name: "Electrical & Electronics Engineering" },
+    { code: "MECH", name: "Mechanical Engineering" },
+    { code: "CIVIL", name: "Civil Engineering" },
+    { code: "IT", name: "Information Technology" },
+    { code: "CHE", name: "Chemical Engineering" },
+    { code: "BME", name: "Biomedical Engineering" },
+    { code: "AERO", name: "Aeronautical Engineering" },
+    { code: "AUTO", name: "Automobile Engineering" },
+    { code: "MBA", name: "Master of Business Administration" },
+    { code: "MCA", name: "Master of Computer Applications" }
+  ];
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    if (error) setError("");
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setErrors({ ...errors, [e.target.name]: '' });
   };
 
-  const handleRegister = async (e) => {
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Full name is required';
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = 'Phone number is required';
+    } else if (!/^[6-9]\d{9}$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = 'Invalid Indian phone number';
+    }
+
+    if (!formData.department) {
+      newErrors.department = 'Please select your department';
+    }
+
+    if (!formData.classRollNo.trim()) {
+      newErrors.classRollNo = 'Roll number is required';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
-    // Basic validation
-    if (!form.email || !form.password || !form.confirmPassword || !form.fullName || !form.classRollNo || !form.department) {
-      setError("All fields are required except phone number");
-      setLoading(false);
-      return;
-    }
-
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-
     try {
-      const response = await register(
-        form.email.trim(),
-        form.password,
-        form.confirmPassword,
-        form.fullName.trim(),
-        form.classRollNo.trim(),
-        form.phoneNumber.trim(),
-        form.department
-      );
+      const res = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-      if (!response.ok) {
-        throw new Error(response.data.error || "Registration failed");
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrors({ submit: data.message || 'Registration failed' });
+        setLoading(false);
+        return;
       }
 
-      // Store email for OTP verification
-      localStorage.setItem("email", form.email.trim());
-
-      // Redirect to OTP verification page
-      router.push(`/verifyotp?email=${encodeURIComponent(form.email.trim())}`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
+      router.push(`/verifyotp?email=${encodeURIComponent(formData.email)}`);
+    } catch (error) {
+      setErrors({ submit: 'Network error. Please try again.' });
       setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen overflow-y-auto flex items-center justify-center bg-black px-4 py-4 relative">
-      {/* Animated Background */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2070')",
-          filter: "brightness(0.35) saturate(1.2)"
-        }}
-      />
-      
-      {/* Animated Treasure Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 left-10 text-amber-400/20 animate-pulse">
-          <Map size={32} className="animate-float" />
-        </div>
-        <div className="absolute top-20 right-20 text-amber-400/20 animate-pulse" style={{animationDelay: '1s'}}>
-          <Anchor size={28} className="animate-float" />
-        </div>
-        <div className="absolute bottom-32 left-20 text-amber-400/20 animate-pulse" style={{animationDelay: '2s'}}>
-          <Ship size={36} className="animate-float" />
-        </div>
-        <div className="absolute bottom-20 right-32 text-amber-400/20 animate-pulse" style={{animationDelay: '0.5s'}}>
-          <Scroll size={30} className="animate-float" />
-        </div>
+    <div className="min-h-screen bg-linear-to-br from-stone-900 via-amber-950 to-stone-900 relative overflow-hidden">
+      {/* Subtle Floating Particles - Hidden on mobile, visible on tablet+ */}
+      <div className="hidden md:block absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+        <Map className="absolute top-20 left-10 w-16 h-16 text-amber-600" style={{ animation: 'float 8s ease-in-out infinite' }} />
+        <Anchor className="absolute top-1/4 right-20 w-20 h-20 text-amber-700" style={{ animation: 'float 10s ease-in-out infinite 1s' }} />
+        <Ship className="absolute bottom-1/4 left-16 w-14 h-14 text-amber-500" style={{ animation: 'float 9s ease-in-out infinite 2s' }} />
+        <Scroll className="absolute bottom-20 right-10 w-12 h-12 text-amber-600" style={{ animation: 'float 7s ease-in-out infinite 1.5s' }} />
       </div>
-      
-      {/* Dark Overlay with Vignette */}
-      <div className="absolute inset-0 bg-gradient-radial from-black/30 via-black/50 to-black/70" />
-      
-      {/* Content */}
-      <div className="w-full max-w-md p-6 bg-gradient-to-br from-amber-900/70 via-orange-900/60 to-amber-900/70 rounded-2xl shadow-2xl border-2 border-amber-600/40 space-y-4 relative z-10 my-4 backdrop-blur-sm">
-        {/* Decorative Corner Elements */}
-        <div className="absolute -top-2 -left-2 w-16 h-16 border-t-4 border-l-4 border-amber-400/60 rounded-tl-xl"></div>
-        <div className="absolute -top-2 -right-2 w-16 h-16 border-t-4 border-r-4 border-amber-400/60 rounded-tr-xl"></div>
-        <div className="absolute -bottom-2 -left-2 w-16 h-16 border-b-4 border-l-4 border-amber-400/60 rounded-bl-xl"></div>
-        <div className="absolute -bottom-2 -right-2 w-16 h-16 border-b-4 border-r-4 border-amber-400/60 rounded-br-xl"></div>
-        
-        {/* Header */}
-        <div className="text-center relative">
-          <div className="relative inline-block">
-            <Compass className="mx-auto text-amber-400 animate-spin-slow" size={48} />
-            <div className="absolute inset-0 animate-ping opacity-30">
-              <Compass className="text-amber-300" size={48} />
-            </div>
-          </div>
-          <h1 className="text-amber-100 text-3xl font-bold mt-3 tracking-wide drop-shadow-lg">
-            ⚓ Recruit New Hunter ⚓
-          </h1>
-          <p className="text-amber-200/80 text-sm mt-2 font-medium">
-            🗺️ Chart your course to legendary treasures!
-          </p>
-        </div>
 
-        {/* Info Message */}
-        {showMessage && (
-          <div className="p-3 bg-blue-500/30 border border-blue-400/50 rounded-lg text-blue-100 text-sm flex items-center gap-2 animate-bounce-in shadow-lg">
-            <AlertCircle size={16} />
-            <span>⚡ No adventurer found! Join the quest!</span>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="p-3 bg-red-500/30 border border-red-400/50 rounded-lg text-red-100 text-sm flex items-center gap-2 animate-shake shadow-lg">
-            <AlertCircle size={16} />
-            <span>🚨 {error}</span>
-          </div>
-        )}
-
-        {/* Registration Form */}
-        <form onSubmit={handleRegister} className="space-y-3">
-          <div className="relative group">
-            <input
-              type="email"
-              name="email"
-              placeholder="✉️ Adventurer's Email"
-              value={form.email}
-              onChange={handleChange}
-              required
-              className="w-full p-3 text-sm rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all group-hover:border-amber-500/50"
-            />
-          </div>
-          
-          <div className="relative group">
-            <input
-              type="text"
-              name="fullName"
-              placeholder="👤 Hunter's Full Name"
-              value={form.fullName}
-              onChange={handleChange}
-              required
-              className="w-full p-3 text-sm rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all group-hover:border-amber-500/50"
-            />
-          </div>
-          
-          <div className="relative group">
-            <input
-              type="text"
-              name="classRollNo"
-              placeholder="🎯 Hunter ID (Roll Number)"
-              value={form.classRollNo}
-              onChange={handleChange}
-              required
-              className="w-full p-3 text-sm rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all group-hover:border-amber-500/50"
-            />
-          </div>
-          
-          <div className="relative group">
-            <input
-              type="tel"
-              name="phoneNumber"
-              placeholder="📱 Contact Signal (Optional)"
-              value={form.phoneNumber}
-              onChange={handleChange}
-              className="w-full p-3 text-sm rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all group-hover:border-amber-500/50"
-            />
-          </div>
-          
-          <div className="relative group">
-            <select
-              name="department"
-              value={form.department}
-              onChange={handleChange}
-              required
-              className="w-full p-3 text-sm rounded-lg bg-black/50 border-2 border-amber-600/30 text-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all group-hover:border-amber-500/50"
-            >
-              <option value="" disabled className="bg-stone-900">🏛️ Select Your Guild</option>
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept} className="bg-stone-900">
-                  {dept}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="relative group">
-            <input
-              type="password"
-              name="password"
-              placeholder="🔐 Secret Code"
-              value={form.password}
-              onChange={handleChange}
-              required
-              className="w-full p-3 text-sm rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all group-hover:border-amber-500/50"
-            />
-          </div>
-          
-          <div className="relative group">
-            <input
-              type="password"
-              name="confirmPassword"
-              placeholder="🔒 Confirm Secret Code"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              required
-              className="w-full p-3 text-sm rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/50 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-all group-hover:border-amber-500/50"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3.5 text-base font-bold bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 rounded-lg text-white hover:from-amber-500 hover:via-orange-500 hover:to-amber-500 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg border-2 border-amber-400/50 hover:shadow-amber-500/50 hover:shadow-xl"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <Compass className="animate-spin" size={20} />
-                🗺️ Setting Sail...
-              </span>
-            ) : (
-              <span className="flex items-center justify-center gap-2">
-                🏴‍☠️ Join the Treasure Hunt 🏴‍☠️
-              </span>
-            )}
-          </button>
-        </form>
-
-        {/* Footer */}
-        <div className="mt-4 pt-4 border-t-2 border-amber-600/30 text-center text-amber-200/70 text-sm">
-          <span>Already a seasoned hunter? </span>
-          <Link
-            href="/login"
-            className="text-amber-400 hover:text-amber-300 underline underline-offset-4 font-semibold"
-          >
-            ⚔️ Return to the Quest
-          </Link>
-        </div>
-      </div>
-      
-      {/* Add custom animations */}
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-25px) rotate(5deg); }
+        }
+        @keyframes pulse-border {
+          0%, 100% { border-color: rgba(251, 191, 36, 0.3); }
+          50% { border-color: rgba(251, 191, 36, 0.6); }
         }
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
-        @keyframes bounce-in {
-          0% { transform: scale(0.3); opacity: 0; }
-          50% { transform: scale(1.05); }
-          70% { transform: scale(0.9); }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-10px); }
-          75% { transform: translateX(10px); }
-        }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-        .animate-spin-slow {
-          animation: spin-slow 8s linear infinite;
-        }
-        .animate-bounce-in {
-          animation: bounce-in 0.5s ease-out;
-        }
-        .animate-shake {
-          animation: shake 0.5s ease-in-out;
-        }
-        .bg-gradient-radial {
-          background: radial-gradient(circle, var(--tw-gradient-stops));
-        }
       `}</style>
+
+      {/* Decorative Top Border */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-transparent via-amber-500 to-transparent"></div>
+
+      {/* Main Container - Mobile First */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4 py-8 sm:py-12">
+        <div className="w-full max-w-md">
+          {/* Header Section */}
+          <div className="text-center mb-6 sm:mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-linear-to-br from-amber-600 to-amber-800 border-4 border-amber-500/30 mb-4" style={{ animation: 'spin-slow 20s linear infinite' }}>
+              <Compass className="w-8 h-8 sm:w-10 sm:h-10 text-amber-100" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-amber-100 mb-2">
+              Recruit New Hunter
+            </h1>
+            <p className="text-amber-200/70 text-sm sm:text-base">
+              Chart your course to legendary treasures!
+            </p>
+          </div>
+
+          {/* Registration Form - Mobile Optimized */}
+          <div className="bg-linear-to-br from-stone-900/90 to-amber-950/90 backdrop-blur-lg border-2 border-amber-700/30 rounded-2xl p-5 sm:p-8 shadow-2xl">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+              {/* Full Name */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <User className="w-4 h-4" />
+                  Hunter's Full Name
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="Enter your full name"
+                />
+                {errors.fullName && (
+                  <p className="text-red-400 text-xs mt-1">{errors.fullName}</p>
+                )}
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Mail className="w-4 h-4" />
+                  Adventurer's Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="hunter@example.com"
+                />
+                {errors.email && (
+                  <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                )}
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Phone className="w-4 h-4" />
+                  Contact Signal
+                </label>
+                <input
+                  type="tel"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="9876543210"
+                />
+                {errors.phoneNumber && (
+                  <p className="text-red-400 text-xs mt-1">{errors.phoneNumber}</p>
+                )}
+              </div>
+
+              {/* Department */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Map className="w-4 h-4" />
+                  Guild Division
+                </label>
+                <select
+                  name="department"
+                  value={formData.department}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base focus:border-amber-500 focus:outline-none transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-stone-900">Select your guild</option>
+                  {departments.map(dept => (
+                    <option key={dept.code} value={dept.code} className="bg-stone-900">
+                      {dept.code} - {dept.name}
+                    </option>
+                  ))}
+                </select>
+                {errors.department && (
+                  <p className="text-red-400 text-xs mt-1">{errors.department}</p>
+                )}
+              </div>
+
+              {/* Roll Number */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Hash className="w-4 h-4" />
+                  Hunter ID
+                </label>
+                <input
+                  type="text"
+                  name="classRollNo"
+                  value={formData.classRollNo}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="Your roll number"
+                />
+                {errors.classRollNo && (
+                  <p className="text-red-400 text-xs mt-1">{errors.classRollNo}</p>
+                )}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Lock className="w-4 h-4" />
+                  Secret Code
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="Min. 6 characters"
+                />
+                {errors.password && (
+                  <p className="text-red-400 text-xs mt-1">{errors.password}</p>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Lock className="w-4 h-4" />
+                  Confirm Secret Code
+                </label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="Repeat your password"
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              {/* Submit Error */}
+              {errors.submit && (
+                <div className="bg-red-900/30 border border-red-700/50 rounded-xl p-3">
+                  <p className="text-red-200 text-sm text-center">{errors.submit}</p>
+                </div>
+              )}
+
+              {/* Submit Button - Touch Friendly */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-linear-to-r from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base sm:text-lg"
+                style={{ minHeight: '56px' }}
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    Registering...
+                  </span>
+                ) : (
+                  '🏴‍☠️ Join the Treasure Hunt'
+                )}
+              </button>
+            </form>
+
+            {/* Login Link */}
+            <div className="mt-6 text-center">
+              <p className="text-amber-200/70 text-sm">
+                Already a crew member?{' '}
+                <Link href="/login" className="text-amber-400 hover:text-amber-300 font-semibold underline">
+                  Return to Portal
+                </Link>
+              </p>
+            </div>
+          </div>
+
+          {/* Decorative Bottom Element */}
+          <div className="mt-6 text-center">
+            <p className="text-amber-600/50 text-xs">
+              ⚓ Secure Registration • Encrypted Data ⚓
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

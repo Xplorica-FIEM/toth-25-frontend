@@ -81,7 +81,7 @@ const ViewRiddles = () => {
   // Loading State
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-screen bg-gradient-to-br from-stone-900 via-amber-900/20 to-stone-900">
+      <div className="flex flex-col justify-center items-center h-screen bg-linear-to-br from-stone-900 via-amber-900/20 to-stone-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-amber-400 border-t-transparent mx-auto mb-4"></div>
           <p className="text-amber-400 font-mono text-xl animate-pulse">Loading Riddle...</p>

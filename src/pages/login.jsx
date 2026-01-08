@@ -1,278 +1,238 @@
-import { useState, useEffect } from "react";
-import { useRouter } from "next/router";
-import Link from "next/link";
-import { Compass, AlertCircle, Map, Anchor, Key, Shield } from "lucide-react";
-import { login } from "@/utils/api";
-import { saveToken, saveUser, isAuthenticated, isAdmin } from "@/utils/auth";
+// pages/login.jsx - Mobile-First Treasure Hunt Login
+import { useState } from 'react';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
+import { Mail, Lock, Compass, Key, Anchor, Map, Shield, LogIn } from 'lucide-react';
 
 export default function Login() {
   const router = useRouter();
-
-  const [form, setForm] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // Prevent FOUC by ensuring styles are loaded
-    setMounted(true);
-    
-    // Redirect if already authenticated
-    if (isAuthenticated()) {
-      if (isAdmin()) {
-        router.replace("/admin");
-      } else {
-        router.replace("/dashboard");
-      }
-    }
-  }, [router]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    if (error) setError("");
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setErrors({ ...errors, [e.target.name]: '' });
   };
 
-  const handleLogin = async (e) => {
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
+
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const response = await login(
-        form.email.trim().toLowerCase(),
-        form.password.trim()
-      );
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-      if (!response.ok) {
-        setLoading(false);
-        
-        // User doesn't exist - redirect to register
-        if (response.status === 404 && response.data?.action === "register") {
-          setError(response.data?.error || "No account found");
-          setTimeout(() => {
-            router.push(`/register?email=${encodeURIComponent(form.email)}`);
-          }, 2000);
-          return;
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data.requiresVerification) {
+          router.push(`/verifyotp?email=${encodeURIComponent(formData.email)}`);
+        } else {
+          setErrors({ submit: data.message || 'Login failed' });
+          setLoading(false);
         }
-        
-        // Wrong password
-        if (response.status === 401) {
-          setError(response.data?.error || "Incorrect password. Please try again.");
-          return;
-        }
-        
-        // Email not verified
-        if (response.status === 403 && response.data?.action === "verify-email") {
-          setError("Please verify your email first. Redirecting...");
-          setTimeout(() => {
-            router.push(`/verifyotp?email=${encodeURIComponent(form.email)}`);
-          }, 2000);
-          return;
-        }
-        
-        // Profile not completed
-        if (response.status === 403 && response.data?.action === "complete-profile") {
-          setError("Please complete your profile. Redirecting...");
-          setTimeout(() => {
-            router.push(`/completeprofile?email=${encodeURIComponent(form.email)}`);
-          }, 2000);
-          return;
-        }
-        
-        // Other errors
-        setError(response.data?.error || response.data?.message || "Login failed");
         return;
       }
 
-      // Extract token and user from response.data
-      const { token, user } = response.data;
+      // Store token and user data
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
 
-      if (!token || !user) {
-        setLoading(false);
-        setError("Invalid response from server");
-        return;
-      }
-
-      // Save token and user data
-      saveToken(token);
-      saveUser(user);
-
-      // Redirect based on admin status
-      if (user.isAdmin) {
-        router.push("/admin/dashboard");
+      // Redirect to appropriate dashboard
+      if (data.user.isAdmin) {
+        router.push('/admin/dashboard');
       } else {
-        router.push("/dashboard");
+        router.push('/dashboard');
       }
-    } catch (err) {
-      console.error("Login error:", err);
+    } catch (error) {
+      setErrors({ submit: 'Network error. Please try again.' });
       setLoading(false);
-      setError(err.message || "Server not reachable. Check connection.");
     }
   };
 
-  // Prevent FOUC - don't render until mounted
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-stone-900" />
-    );
-  }
-
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Animated Background */}
-      <div
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
-        style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=2070')",
-          filter: "brightness(0.35) saturate(1.2)",
-          opacity: mounted ? 1 : 0,
-        }}
-      />
-      
-      {/* Floating Treasure Elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-16 text-amber-400/15 animate-pulse" style={{animationDelay: '0s'}}>
-          <Map size={40} className="animate-float" />
-        </div>
-        <div className="absolute top-40 right-24 text-amber-400/15 animate-pulse" style={{animationDelay: '1.5s'}}>
-          <Anchor size={36} className="animate-float" />
-        </div>
-        <div className="absolute bottom-32 left-32 text-amber-400/15 animate-pulse" style={{animationDelay: '0.7s'}}>
-          <Key size={34} className="animate-float" />
-        </div>
-        <div className="absolute bottom-40 right-16 text-amber-400/15 animate-pulse" style={{animationDelay: '2s'}}>
-          <Shield size={38} className="animate-float" />
-        </div>
+    <div className="min-h-screen bg-linear-to-br from-stone-900 via-amber-950 to-stone-900 relative overflow-hidden">
+      {/* Subtle Floating Treasure Icons - Hidden on mobile */}
+      <div className="hidden md:block absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+        <Key className="absolute top-20 left-20 w-12 h-12 text-amber-600" style={{ animation: 'float 7s ease-in-out infinite' }} />
+        <Anchor className="absolute top-1/3 right-16 w-16 h-16 text-amber-700" style={{ animation: 'float 9s ease-in-out infinite 1s' }} />
+        <Map className="absolute bottom-1/3 left-10 w-14 h-14 text-amber-500" style={{ animation: 'float 8s ease-in-out infinite 1.5s' }} />
+        <Shield className="absolute bottom-20 right-20 w-10 h-10 text-amber-600" style={{ animation: 'float 6s ease-in-out infinite 2s' }} />
       </div>
-      
-      {/* Vignette Overlay */}
-      <div className="fixed inset-0 bg-gradient-radial from-transparent via-black/40 to-black/70" />
 
-      <div className="min-h-screen flex items-center justify-center px-6 relative z-10">
-        <div className="w-full max-w-md p-8 bg-gradient-to-br from-amber-900/70 via-orange-900/60 to-amber-900/70 rounded-2xl shadow-2xl border-2 border-amber-600/40 backdrop-blur-sm transition-all duration-700" style={{ 
-          opacity: mounted ? 1 : 0,
-          transform: mounted ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.9)'
-        }}>
-          {/* Decorative Corners */}
-          <div className="absolute -top-2 -left-2 w-20 h-20 border-t-4 border-l-4 border-amber-400/60 rounded-tl-2xl"></div>
-          <div className="absolute -top-2 -right-2 w-20 h-20 border-t-4 border-r-4 border-amber-400/60 rounded-tr-2xl"></div>
-          <div className="absolute -bottom-2 -left-2 w-20 h-20 border-b-4 border-l-4 border-amber-400/60 rounded-bl-2xl"></div>
-          <div className="absolute -bottom-2 -right-2 w-20 h-20 border-b-4 border-r-4 border-amber-400/60 rounded-br-2xl"></div>
-          
-          {/* Header */}
-          <div className="text-center mb-8 relative">
-            <div className="relative inline-block mb-4">
-              <Compass className="mx-auto text-amber-400 animate-spin-slow" size={56} />
-              <div className="absolute inset-0 animate-ping opacity-20">
-                <Compass className="text-amber-300" size={56} />
-              </div>
-            </div>
-            <h1 className="text-amber-100 text-3xl font-bold tracking-wide drop-shadow-lg">
-              ⚓ Hunter's Portal ⚓
-            </h1>
-            <p className="text-amber-200/80 text-sm mt-2 font-medium">
-              🗺️ Continue your legendary quest!
-            </p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            {error && (
-              <div className="bg-red-500/30 border-2 border-red-400/50 p-3 rounded-lg text-red-100 text-sm flex items-center gap-2 animate-shake shadow-lg">
-                <AlertCircle size={18} />
-                <span className="font-medium">🚨 {error}</span>
-              </div>
-            )}
-
-            <div className="space-y-2 relative group">
-              <label className="text-amber-200/90 text-sm ml-1 font-semibold flex items-center gap-2">
-                ✉️ Adventurer's Email
-              </label>
-              <input
-                name="email"
-                type="email"
-                placeholder="your.email@quest.com"
-                value={form.email}
-                onChange={handleChange}
-                required
-                className="w-full p-3.5 rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/40 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all group-hover:border-amber-500/50 shadow-inner"
-              />
-            </div>
-
-            <div className="space-y-2 relative group">
-              <label className="text-amber-200/90 text-sm ml-1 font-semibold flex items-center gap-2">
-                🔐 Secret Code
-              </label>
-              <input
-                name="password"
-                type="password"
-                placeholder="••••••••••"
-                value={form.password}
-                onChange={handleChange}
-                required
-                className="w-full p-3.5 rounded-lg bg-black/50 border-2 border-amber-600/30 text-white placeholder-amber-300/40 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all group-hover:border-amber-500/50 shadow-inner"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 mt-6 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 hover:from-amber-500 hover:via-orange-500 hover:to-amber-500 text-white font-bold text-lg rounded-lg shadow-lg border-2 border-amber-400/50 hover:shadow-amber-500/50 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 active:scale-95"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Compass className="animate-spin" size={22} />
-                  ⚔️ Entering...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  🏴‍☠️ Begin the Adventure 🏴‍☠️
-                </span>
-              )}
-            </button>
-          </form>
-
-          {/* Footer */}
-          <div className="mt-8 pt-6 border-t-2 border-amber-600/30 text-center text-amber-200/70 text-sm">
-            <span>New to the quest? </span>
-            <Link
-              href="/register"
-              className="text-amber-400 hover:text-amber-300 underline underline-offset-4 font-semibold"
-            >
-              ⚓ Join the Hunt
-            </Link>
-          </div>
-        </div>
-      </div>
-      
-      {/* Custom Animations */}
-      <style jsx>{`
+      <style jsx global>{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-25px) rotate(5deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
         }
         @keyframes spin-slow {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
         }
+        @keyframes ping-slow {
+          0% { transform: scale(1); opacity: 1; }
+          75%, 100% { transform: scale(2); opacity: 0; }
+        }
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-          20%, 40%, 60%, 80% { transform: translateX(8px); }
-        }
-        .animate-float {
-          animation: float 4s ease-in-out infinite;
-        }
-        .animate-spin-slow {
-          animation: spin-slow 10s linear infinite;
-        }
-        .animate-shake {
-          animation: shake 0.6s ease-in-out;
-        }
-        .bg-gradient-radial {
-          background: radial-gradient(circle at center, var(--tw-gradient-stops));
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
         }
       `}</style>
+
+      {/* Decorative Top Border */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-transparent via-amber-500 to-transparent"></div>
+
+      {/* Main Container - Mobile First */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <div className="w-full max-w-md">
+          {/* Header Section with Compass */}
+          <div className="text-center mb-8 sm:mb-10">
+            {/* Spinning Compass with Ping Effect */}
+            <div className="relative inline-block mb-6">
+              <div className="absolute inset-0 rounded-full border-4 border-amber-500/30" style={{ animation: 'ping-slow 3s ease-out infinite' }} />
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-linear-to-br from-amber-600 to-amber-800 border-4 border-amber-500/50 flex items-center justify-center shadow-2xl">
+                <Compass className="w-10 h-10 sm:w-12 sm:h-12 text-amber-100" style={{ animation: 'spin-slow 12s linear infinite' }} />
+              </div>
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-amber-100 mb-3">
+              Hunter's Portal
+            </h1>
+            <p className="text-amber-200/70 text-sm sm:text-base px-4">
+              Enter your credentials to embark on the adventure
+            </p>
+          </div>
+
+          {/* Login Form Card - Mobile Optimized */}
+          <div className="bg-linear-to-br from-stone-900/90 to-amber-950/90 backdrop-blur-lg border-2 border-amber-700/30 rounded-2xl p-6 sm:p-8 shadow-2xl">
+            <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
+              {/* Email Field */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Mail className="w-4 h-4" />
+                  Adventurer's Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 sm:py-4 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="hunter@example.com"
+                />
+                {errors.email && (
+                  <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 bg-red-400 rounded-full" />
+                    {errors.email}
+                  </p>
+                )}
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <label className="flex items-center gap-2 text-amber-200 text-sm font-medium mb-2">
+                  <Lock className="w-4 h-4" />
+                  Secret Code
+                </label>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 sm:py-4 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
+                  placeholder="Enter your password"
+                />
+                {errors.password && (
+                  <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 bg-red-400 rounded-full" />
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+
+              {/* Submit Error */}
+              {errors.submit && (
+                <div className="bg-red-900/30 border border-red-700/50 rounded-xl p-3 sm:p-4" style={{ animation: 'shake 0.5s ease-in-out' }}>
+                  <p className="text-red-200 text-sm text-center">{errors.submit}</p>
+                </div>
+              )}
+
+              {/* Submit Button - Touch Friendly (min 44px height) */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-linear-to-r from-amber-600 to-amber-800 hover:from-amber-500 hover:to-amber-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transform hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base sm:text-lg flex items-center justify-center gap-2"
+                style={{ minHeight: '56px' }}
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Authenticating...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="w-5 h-5" />
+                    <span>Begin the Adventure</span>
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Register Link */}
+            <div className="mt-6 text-center border-t border-amber-700/20 pt-6">
+              <p className="text-amber-200/70 text-sm">
+                New to the quest?{' '}
+                <Link href="/register" className="text-amber-400 hover:text-amber-300 font-semibold underline">
+                  Join the Crew
+                </Link>
+              </p>
+            </div>
+          </div>
+
+          {/* Bottom Decorative Elements */}
+          <div className="mt-6 flex items-center justify-center gap-4 text-amber-600/50 text-xs">
+            <span className="flex items-center gap-1">
+              <Key className="w-3 h-3" />
+              Secure Login
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <Shield className="w-3 h-3" />
+              Encrypted
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

@@ -129,7 +129,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
       />
       
       {/* Gradient Overlay */}
-      <div className="fixed inset-0 bg-gradient-to-br from-black/30 via-amber-900/20 to-black/30" />
+      <div className="fixed inset-0 bg-linear-to-br from-black/30 via-amber-900/20 to-black/30" />
 
       {/* Top Navigation - Admin Only */}
       {currentUser?.isAdmin && (
@@ -192,7 +192,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
           )}
 
           {/* Riddle Card */}
-          <div className="bg-gradient-to-br from-amber-50/95 via-yellow-50/95 to-amber-100/95 backdrop-blur-xl rounded-3xl border-4 border-amber-800/80 shadow-2xl overflow-hidden relative" 
+          <div className="bg-linear-to-br from-amber-50/95 via-yellow-50/95 to-amber-100/95 backdrop-blur-xl rounded-3xl border-4 border-amber-800/80 shadow-2xl overflow-hidden relative" 
             style={{
               transform: contentVisible ? 'scale(1)' : 'scale(0.95)',
               opacity: contentVisible ? 1 : 0,
@@ -210,7 +210,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
             <div className="absolute bottom-0 right-0 w-20 h-20 border-r-4 border-b-4 border-amber-700/40 rounded-br-3xl"></div>
             
             {/* Card Header */}
-            <div className="bg-gradient-to-r from-amber-900 via-amber-800 to-amber-900 px-3 py-2 md:px-6 md:py-3 border-b-4 border-amber-950/50 relative">
+            <div className="bg-linear-to-r from-amber-900 via-amber-800 to-amber-900 px-3 py-2 md:px-6 md:py-3 border-b-4 border-amber-950/50 relative">
               {/* Decorative corner flourishes */}
               <div className="absolute top-1 left-1 text-amber-300/30 text-xl md:text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>❦</div>
               <div className="absolute top-1 right-1 text-amber-300/30 text-xl md:text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>❦</div>
@@ -258,7 +258,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
                   <div className="pt-2 md:pt-3">
                     <button
                       onClick={() => router.push('/dashboard')}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold shadow-lg border border-amber-400/50 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold shadow-lg border border-amber-400/50 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
                     >
                       <ScanLine className="size-4 md:size-5" />
                       <span className="hidden sm:inline">Scan Another Riddle</span>

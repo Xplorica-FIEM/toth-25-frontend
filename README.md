@@ -32,6 +32,7 @@ Modern Next.js frontend for the college treasure hunt game with QR scanning, rea
 
 ### Admin Features
 - ✅ **Riddle Management** - Create, edit, delete riddles with order numbers
+- ✅ **Meme Riddles** - Separate meme riddle system with image upload & QR generation
 - ✅ **User Management** - View all users, toggle admin roles, view stats
 - ✅ **Dashboard Analytics** - Overview of users, riddles, and game statistics
 - ✅ **Leaderboard Filtering** - Filter rankings by department
@@ -50,8 +51,9 @@ Modern Next.js frontend for the college treasure hunt game with QR scanning, rea
 - **Framework:** Next.js 16.0.8 (Pages Router)
 - **Styling:** Tailwind CSS 4
 - **QR Scanner:** @zxing/browser
+- **QR Generator:** qrcode (for admin meme riddles)
 - **Icons:** lucide-react
-- **State Management:** React Context + localStorage
+- **State Management:** Zustand + localStorage
 - **HTTP Client:** Native fetch API
 - **Deployment:** Vercel
 - **TypeScript:** For type safety (tsconfig.json)
@@ -66,10 +68,15 @@ toth-25-frontend/
 ├── src/
 │   ├── components/
 │   │   ├── AdminLayout.jsx   # Admin panel layout wrapper
-│   │   ├── ProtectedRoute.jsx # Route protection HOC
+│   │   ├── ConfirmModal.jsx  # Confirmation modal component
+│   │   ├── RiddleTemplate.jsx # Riddle display template
 │   │   └── scan.jsx          # QR scanner component
 │   │
 │   ├── constants/
+│   │   └── departments.js    # College departments list
+│   │
+│   ├── store/
+│   │   └── adminStore.js     # Zustand state managemen
 │   │   └── departments.js    # College departments list
 │   │
 │   ├── pages/
@@ -79,11 +86,12 @@ toth-25-frontend/
 │   │   ├── landing.jsx       # Main landing page
 │   │   ├── login.jsx         # Login page
 │   │   ├── register.jsx      # Registration (Step 1)
-│   │   ├── verifyotp.jsx     # OTP verification (Step 2)
-│   │   ├── completeprofile.jsx # Profile completion (Step 3)
-│   │   ├── dashboard.jsx     # User dashboard
-│   │   ├── loadinganimation.jsx # Loading component
-│   │   └── admin/
+│   │   ├── veridashboard.jsx      # Admin dashboard overview
+│   │       ├── riddles.jsx        # Riddle list management
+│   │       ├── riddles/
+│   │       │   ├── create.jsx     # Create/Edit riddle form
+│   │       │   └── [id].jsx       # Edit riddle by ID
+│   │       ├── meme-riddles.jsx   # Meme riddle management
 │   │       ├── index.jsx          # Admin home (redirects)
 │   │       ├── dashboard.jsx      # Admin dashboard overview
 │   │       ├── riddles.jsx        # Riddle list management
@@ -169,10 +177,11 @@ NEXT_PUBLIC_BACKEND_URL=https://toth-25-backend.vercel.app
 | `/register` | Registration (Step 1) | Email and password setup |
 | `/verifyotp` | OTP Verification (Step 2) | Email verification with 4-digit code |
 | `/completeprofile` | Profile Completion (Step 3) | Full name, roll number, department |
-
-### Protected Routes (Require Login)
-
-| Route | Description | Access Level |
+/dashboard` | Admin Dashboard | Admin only |
+| `/admin/riddles` | Riddle Management | Admin only |
+| `/admin/riddles/create` | Create/Edit Riddle | Admin only |
+| `/admin/riddles/[id]` | Edit Specific Riddle | Admin only |
+| `/admin/meme-riddles` | Meme Riddle Management
 |-------|-------------|--------------|
 | `/dashboard` | User Dashboard | All users |
 | `/admin` | Admin Home | Admin only (redirects to dashboard) |
@@ -191,7 +200,9 @@ NEXT_PUBLIC_BACKEND_URL=https://toth-25-backend.vercel.app
 **Location:** `src/components/scan.jsx`
 
 **Features:**
-- Real-time camera scanning with @zxing/browser
+- Supports both regular riddles and meme riddles (6-char alphanumeric)
+- Displays riddle name, puzzle text, and order number
+- Shows meme riddles in treasure hunt themed modal
 - Parses riddle ID from QR codes
 - Displays riddle name, puzzle text, and order number
 - Shows scan timestamp
