@@ -79,13 +79,13 @@ export async function decrypt(encryptedData) {
 }
 
 /**
- * Decrypt QR code data (returns shortId)
- * @param {string} encryptedQR - Encrypted shortId
- * @returns {Promise<string>} - Plain shortId
+ * Decrypt QR code data (returns riddle id)
+ * @param {string} encryptedQR - Encrypted riddle id
+ * @returns {Promise<string>} - Plain riddle id
  */
 export async function decryptQRData(encryptedQR) {
-  const shortId = await decrypt(encryptedQR);
-  return shortId; // Now returns just the shortId string
+  const riddleId = await decrypt(encryptedQR);
+  return riddleId; // Now returns just the riddle id string
 }
 
 /**

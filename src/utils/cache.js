@@ -23,7 +23,7 @@ function initDB() {
       
       // Create riddles store if it doesn't exist
       if (!db.objectStoreNames.contains(RIDDLES_STORE)) {
-        const riddleStore = db.createObjectStore(RIDDLES_STORE, { keyPath: 'shortId' });
+        const riddleStore = db.createObjectStore(RIDDLES_STORE, { keyPath: 'id' });
         riddleStore.createIndex('orderNumber', 'orderNumber', { unique: false });
       }
       

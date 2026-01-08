@@ -189,31 +189,30 @@ export default function Scan({ onClose }) {
     setLoading(true);
 
     try {
-      // Step 1: Decrypt QR to get shortId
+      // Step 1: Decrypt QR to get riddle id
       setLoadingMessage("🔓 Decrypting QR code...");
-      const shortId = await decryptQRData(qrData);
+      const riddleId = await decryptQRData(qrData);
       
-      if (!shortId) {
+      if (!riddleId) {
         throw new Error("Invalid QR code format");
       }
 
       // Step 2: Check cache first (instant lookup)
       setLoadingMessage("📦 Loading riddle...");
-      const cachedRiddle = await getCachedRiddle(shortId);
+      const cachedRiddle = await getCachedRiddle(riddleId);
       
       let riddleData = null;
-      let riddleId = null;
       
       if (cachedRiddle) {
-        console.log(`✅ Cache hit for shortId: ${shortId}`);
+        console.log(`✅ Cache hit for riddle id: ${riddleId}`);
         // Decrypt cached riddle data
         const decrypted = await decryptRiddleData(cachedRiddle.encryptedData);
         riddleData = decrypted;
         
         // Record scan to backend (async, non-blocking)
-        recordScanAsync(qrData, shortId);
+        recordScanAsync(qrData, riddleId);
       } else {
-        console.log(`⚠️ Cache miss for shortId: ${shortId} - falling back to API`);
+        console.log(`⚠️ Cache miss for riddle id: ${riddleId} - falling back to API`);
         // Fallback: Call backend API
         setLoadingMessage("🌐 Fetching from server...");
         const response = await scanQR(qrData);
@@ -223,20 +222,13 @@ export default function Scan({ onClose }) {
         }
 
         riddleData = response.data.riddle;
-        riddleId = riddleData?.id;
       }
 
       if (!riddleData) {
         throw new Error("Invalid response from server");
       }
 
-      // Get the riddle ID (use cached version if available, otherwise from API response)
-      if (!riddleId) {
-        // For cached riddles, we need to call the backend just to get the full riddle ID
-        // This is only needed for the /viewriddles page routing
-        // In a future optimization, we could store the full ID in the cache too
-        riddleId = await getRiddleIdByShortId(shortId);
-      }
+      // riddleId is already the correct id from QR decryption
 
       setLoadingMessage("✨ Loading riddle...");
 
@@ -265,39 +257,20 @@ export default function Scan({ onClose }) {
   };
 
   // Record scan asynchronously (non-blocking)
-  const recordScanAsync = async (qrData, shortId) => {
+  const recordScanAsync = async (qrData, riddleId) => {
     try {
       const response = await scanQR(qrData);
       if (response.ok) {
-        console.log(`✅ Scan recorded for shortId: ${shortId}`);
+        console.log(`✅ Scan recorded for riddle id: ${riddleId}`);
       }
     } catch (error) {
       console.log(`⚠️ Failed to record scan - queueing for offline sync`);
-      // Queue for offline sync
-      // We'll need the full riddle ID, so fetch it first
+      // Queue for offline sync (riddleId is already the 6-char id)
       try {
-        const riddleId = await getRiddleIdByShortId(shortId);
         await queueOfflineScan(riddleId);
       } catch (e) {
         console.error('Failed to queue offline scan:', e);
       }
-    }
-  };
-
-  // Helper function to get full riddle ID from shortId
-  const getRiddleIdByShortId = async (shortId) => {
-    try {
-      // This requires a new backend endpoint or we use the existing scan endpoint
-      // For now, we'll rely on the scan endpoint which returns the full riddle data
-      const response = await scanQR(await import('@/utils/encryption').then(m => m.default.encrypt(shortId)));
-      if (response.ok && response.data.riddle) {
-        return response.data.riddle.id;
-      }
-      throw new Error('Failed to get riddle ID');
-    } catch (error) {
-      console.error('Error getting riddle ID:', error);
-      // Fallback: use shortId as ID (not ideal but prevents crash)
-      return shortId;
     }
   };
 
