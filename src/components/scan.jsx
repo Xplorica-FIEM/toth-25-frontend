@@ -196,7 +196,7 @@ export default function Scan({ onClose }) {
         
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`http://localhost:5000/api/meme-riddles/${qrData}`, {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/meme-riddles/${qrData}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           

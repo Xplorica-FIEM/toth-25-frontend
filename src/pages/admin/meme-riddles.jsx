@@ -75,9 +75,10 @@ function MemeRiddlesAdminContent() {
 
     try {
       const token = localStorage.getItem('token');
-      const url = editingId 
-        ? `http://localhost:5000/api/meme-riddles/${editingId}`
-        : 'http://localhost:5000/api/meme-riddles';
+const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+      const url = editingId
+        ? `${baseUrl}/api/meme-riddles/${editingId}`
+        : `${baseUrl}/api/meme-riddles`;
       
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
@@ -117,7 +118,7 @@ function MemeRiddlesAdminContent() {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/meme-riddles/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/meme-riddles/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -133,7 +134,7 @@ function MemeRiddlesAdminContent() {
   const handleToggleActive = async (id, currentStatus) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/meme-riddles/${id}/toggle`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/meme-riddles/${id}/toggle`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
