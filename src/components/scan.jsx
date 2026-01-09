@@ -3,9 +3,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
 import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera, Wifi, WifiOff } from "lucide-react"; 
-import { scanQR, syncOfflineScans } from "@/utils/api";
-import { getCachedRiddle, queueOfflineScan, getOfflineScans } from "@/utils/cache";
-import { decryptQRData, decryptRiddleData } from "@/utils/encryption";
+import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
+import { triggerSync } from "@/utils/backgroundSync";
 
 export default function Scan({ onClose }) {
   const router = useRouter();
@@ -33,16 +32,14 @@ export default function Scan({ onClose }) {
     // Monitor online/offline status
     const handleOnline = () => {
       setIsOffline(false);
-      syncOfflineScansInBackground();
+      // Trigger background sync when coming online
+      triggerSync();
     };
     const handleOffline = () => setIsOffline(true);
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
-    
-    // Try to sync offline scans on mount
-    syncOfflineScansInBackground();
     
     // Initialize Camera immediately (no delay)
     readerRef.current = new BrowserQRCodeReader();
@@ -54,29 +51,6 @@ export default function Scan({ onClose }) {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  // Background sync for offline scans
-  const syncOfflineScansInBackground = async () => {
-    try {
-      const offlineScans = await getOfflineScans();
-      if (offlineScans.length === 0) return;
-      
-      console.log(`📡 Syncing ${offlineScans.length} offline scans...`);
-      const response = await syncOfflineScans(offlineScans.map(s => ({
-        riddleId: s.riddleId,
-        scannedAt: s.scannedAt
-      })));
-      
-      if (response.ok && response.data) {
-        console.log(`✅ Synced ${response.data.synced} scans`);
-        // Clear synced scans from queue
-        const { clearOfflineScans } = await import('@/utils/cache');
-        await clearOfflineScans();
-      }
-    } catch (error) {
-      console.log('⚠️ Offline sync failed - will retry later');
-    }
-  };
 
   const startScanning = async () => {
     if (!videoRef.current || !readerRef.current) return;
@@ -214,15 +188,14 @@ export default function Scan({ onClose }) {
         }
       }
 
-      // Step 1: Decrypt QR to get riddle id
-      setLoadingMessage("🔓 Deciphering ancient symbols...");
-      const riddleId = await decryptQRData(qrData);
+      // Step 1: QR data is plain riddle ID (no decryption needed)
+      const riddleId = qrData.trim();
       
-      if (!riddleId) {
-        throw new Error("Invalid QR code format");
+      if (!riddleId || riddleId.length !== 6) {
+        throw new Error("Invalid riddle ID format");
       }
 
-      // Step 2: Check cache first (instant lookup)
+      // Step 2: Check IndexedDB cache first (instant offline lookup)
       setLoadingMessage("📜 Searching treasure map...");
       const cachedRiddle = await getCachedRiddle(riddleId);
       
@@ -230,23 +203,38 @@ export default function Scan({ onClose }) {
       
       if (cachedRiddle) {
         console.log(`✅ Cache hit for riddle id: ${riddleId}`);
-        // Decrypt cached riddle data
-        const decrypted = await decryptRiddleData(cachedRiddle.encryptedData);
-        riddleData = decrypted;
+        // Use cached riddle (already decrypted by getCachedRiddle)
+        riddleData = {
+          id: cachedRiddle.id,
+          riddleName: cachedRiddle.riddleName,
+          puzzleText: cachedRiddle.puzzleText,
+          orderNumber: cachedRiddle.orderNumber
+        };
         
-        // Record scan to backend (async, non-blocking)
-        recordScanAsync(qrData, riddleId);
+        // Queue scan for background sync (non-blocking)
+        await queueScan(riddleId);
+        // Trigger immediate sync attempt (will retry in background if fails)
+        triggerSync();
       } else {
-        console.log(`⚠️ Cache miss for riddle id: ${riddleId} - falling back to API`);
-        // Fallback: Call backend API
-        setLoadingMessage("� Consulting the ancient oracle...");
-        const response = await scanQR(qrData);
+        console.log(`⚠️ Cache miss for riddle id: ${riddleId} - fetching from backend`);
+        // Cache miss: Call backend API with plain riddleId
+        setLoadingMessage("🔮 Consulting the ancient oracle...");
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/scan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ riddleId })
+        });
 
         if (!response.ok) {
-          throw new Error(response.data.error || response.data.message || "Scan failed");
+          const errorData = await response.json();
+          throw new Error(errorData.error || errorData.message || "Scan failed");
         }
 
-        riddleData = response.data.riddle;
+        const data = await response.json();
+        riddleData = data.riddle;
       }
 
       if (!riddleData) {
@@ -292,24 +280,6 @@ export default function Scan({ onClose }) {
     // Navigate to dashboard instead of restarting scanner
     router.push('/dashboard');
     onClose();
-  };
-
-  // Record scan asynchronously (non-blocking)
-  const recordScanAsync = async (qrData, riddleId) => {
-    try {
-      const response = await scanQR(qrData);
-      if (response.ok) {
-        console.log(`✅ Scan recorded for riddle id: ${riddleId}`);
-      }
-    } catch (error) {
-      console.log(`⚠️ Failed to record scan - queueing for offline sync`);
-      // Queue for offline sync (riddleId is already the 6-char id)
-      try {
-        await queueOfflineScan(riddleId);
-      } catch (e) {
-        console.error('Failed to queue offline scan:', e);
-      }
-    }
   };
 
   const stopScanning = useCallback(() => {
