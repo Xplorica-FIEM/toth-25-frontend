@@ -195,14 +195,16 @@ export default function Scan({ onClose }) {
         throw new Error("Invalid riddle ID format");
       }
 
-      // Step 2: Check IndexedDB cache first (instant offline lookup)
-      setLoadingMessage("📜 Searching treasure map...");
+      // Step 2: Check localStorage cache first (instant lookup)
       const cachedRiddle = await getCachedRiddle(riddleId);
       
       let riddleData = null;
       
       if (cachedRiddle) {
-        console.log(`✅ Cache hit for riddle id: ${riddleId}`);
+        console.log(`✅ Cache hit for riddle id: ${riddleId}`, cachedRiddle.riddleName);
+        console.log('📝 Puzzle text length:', cachedRiddle.puzzleText?.length, 'chars');
+        console.log('📝 First 50 chars:', cachedRiddle.puzzleText?.substring(0, 50));
+        
         // Use cached riddle (already decrypted by getCachedRiddle)
         riddleData = {
           id: cachedRiddle.id,
@@ -215,10 +217,26 @@ export default function Scan({ onClose }) {
         await queueScan(riddleId);
         // Trigger immediate sync attempt (will retry in background if fails)
         triggerSync();
+        
+        // Store for ViewRiddles page (instant access)
+        localStorage.setItem('currentRiddleId', riddleId);
+        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+        console.log('💾 Stored in localStorage, text length:', riddleData.puzzleText?.length);
+        
+        // Instant redirect - no artificial delays
+        await router.push(
+          {
+            pathname: '/ViewRiddles',
+            query: { id: riddleId }
+          },
+          '/ViewRiddles'
+        );
+        onClose();
+        return; // Exit early for cache hits
       } else {
         console.log(`⚠️ Cache miss for riddle id: ${riddleId} - fetching from backend`);
         // Cache miss: Call backend API with plain riddleId
-        setLoadingMessage("🔮 Consulting the ancient oracle...");
+        setLoadingMessage("⚡ Loading riddle...");
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/scan`, {
           method: 'POST',
           headers: {
@@ -235,32 +253,21 @@ export default function Scan({ onClose }) {
 
         const data = await response.json();
         riddleData = data.riddle;
+        
+        // Store for ViewRiddles page
+        localStorage.setItem('currentRiddleId', riddleId);
+        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+        
+        // Redirect immediately
+        await router.push(
+          {
+            pathname: '/ViewRiddles',
+            query: { id: riddleId }
+          },
+          '/ViewRiddles'
+        );
+        onClose();
       }
-
-      if (!riddleData) {
-        throw new Error("Invalid response from server");
-      }
-
-      // riddleId is already the correct id from QR decryption
-
-      setLoadingMessage("✨ Revealing the mystery...");
-
-      // Cache the riddle ID for faster page loads
-      localStorage.setItem('currentRiddleId', riddleId);
-      localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-
-      // Brief delay to show the message
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Redirect to view riddle
-      await router.push(
-        {
-          pathname: '/ViewRiddles',
-          query: { id: riddleId }
-        },
-        '/ViewRiddles'
-      );
-      onClose();
 
     } catch (err) {
       console.error('❌ Scan error:', err);

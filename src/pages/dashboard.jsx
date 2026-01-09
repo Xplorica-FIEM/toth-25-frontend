@@ -8,10 +8,10 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { getCurrentUser, getProgress, getRiddlesMetadata } from "@/utils/api";
+import { getCurrentUser, getProgress, getRiddlesMetadata, getRiddlesForCache } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
 import { getSessionKey } from "@/utils/sessionKey";
-import { cacheRiddles, isCachePopulated } from "@/utils/riddleCache";
+import { cacheRiddles, isCachePopulated, cleanupOldIndexedDB } from "@/utils/riddleCache";
 import { startBackgroundSync, stopBackgroundSync } from "@/utils/backgroundSync";
 
 const Scan = dynamic(() => import("../components/scan"), {
@@ -75,6 +75,9 @@ function DashboardContent() {
 
   const initializeCache = async () => {
     try {
+      // Clean up old IndexedDB first (migration from IndexedDB to localStorage)
+      await cleanupOldIndexedDB();
+
       // Ensure session key is generated
       getSessionKey();
 
@@ -82,16 +85,40 @@ function DashboardContent() {
       const cacheExists = await isCachePopulated();
       if (cacheExists) {
         console.log('📦 Riddle cache already populated');
-        return;
+        
+        // Validate cache has actual puzzle text (not empty from old bug)
+        try {
+          const cache = localStorage.getItem('toth_riddles_cache');
+          if (cache) {
+            const riddles = JSON.parse(cache);
+            const firstRiddle = riddles[0];
+            if (firstRiddle?.encryptedPuzzleText) {
+              console.log('✓ Cache validation: encrypted text length =', firstRiddle.encryptedPuzzleText.length);
+              // If encrypted text is suspiciously short (< 100), it might be encrypting empty strings
+              if (firstRiddle.encryptedPuzzleText.length < 100) {
+                console.warn('⚠️ Cache contains invalid data, clearing and reinitializing...');
+                const { clearCache } = await import('@/utils/riddleCache');
+                await clearCache();
+                // Fall through to re-fetch
+              } else {
+                return; // Cache is valid
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Cache validation error:', err);
+        }
       }
 
-      // Fetch all riddles from backend
+      // Fetch all riddles from backend (with puzzleText)
       console.log('📥 Fetching riddles for offline cache...');
-      const response = await getRiddlesMetadata();
+      const response = await getRiddlesForCache();
       
       if (response.ok && response.data.riddles) {
-        await cacheRiddles(response.data.riddles);
-        console.log('✅ Riddles cached successfully');
+        const riddles = response.data.riddles;
+        console.log(`📦 Fetched ${riddles.length} riddles. First riddle puzzleText length:`, riddles[0]?.puzzleText?.length || 0);
+        await cacheRiddles(riddles);
+        console.log('✅ Riddles cached successfully with encrypted puzzleText');
       }
     } catch (error) {
       console.error('❌ Failed to initialize cache:', error);

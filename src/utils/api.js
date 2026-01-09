@@ -173,11 +173,10 @@ export const getRiddlesMetadata = async () => {
 };
 
 /**
- * Prefetch all encrypted riddles for offline caching
- * Returns array of {shortId, encryptedData}
+ * Get all riddles with puzzleText for cache initialization
  */
-export const prefetchRiddles = async () => {
-  return fetchAPI('/api/game/riddles-prefetch');
+export const getRiddlesForCache = async () => {
+  return fetchAPI('/api/game/riddles-for-cache');
 };
 
 /**

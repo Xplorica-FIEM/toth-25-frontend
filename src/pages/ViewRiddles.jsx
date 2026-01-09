@@ -35,7 +35,24 @@ const ViewRiddles = () => {
       return;
     }
 
-    // Fetch riddle data from the API
+    // Try to load from cache FIRST (instant display)
+    const cachedData = localStorage.getItem('currentRiddleData');
+    if (cachedData) {
+      try {
+        const parsedData = JSON.parse(cachedData);
+        if (parsedData.id === riddleId) {
+          console.log('✅ Using cached riddle:', parsedData.riddleName, 'Text length:', parsedData.puzzleText?.length);
+          // Use cached data immediately - INSTANT LOAD
+          setRiddle(parsedData);
+          setLoading(false);
+          return; // No API call needed!
+        }
+      } catch (e) {
+        console.log('Cache parse error, fetching from API', e);
+      }
+    }
+
+    // Fallback: Fetch riddle data from the API (only if cache miss)
     const fetchRiddle = async () => {
       try {
         // Show minimal loading state
@@ -54,23 +71,26 @@ const ViewRiddles = () => {
         const data = await response.json();
 
         if (response.ok && data.success) {
-          // CRITICAL: Set riddle data immediately so user can read it
+          // Set riddle data
           setRiddle(data.riddle);
-          setLoading(false); // ✅ User can now read riddle!
+          setLoading(false);
           
-          // Update cache with current riddle ID
+          // Update cache
           localStorage.setItem('currentRiddleId', data.riddle.id);
+          localStorage.setItem('currentRiddleData', JSON.stringify(data.riddle));
         } else {
           setError(data.error || 'Failed to retrieve riddle data.');
           setLoading(false);
           // Clear invalid cache
           localStorage.removeItem('currentRiddleId');
+          localStorage.removeItem('currentRiddleData');
         }
       } catch (err) {
         setError('Riddle not found or access denied.');
         setLoading(false);
         // Clear invalid cache
         localStorage.removeItem('currentRiddleId');
+        localStorage.removeItem('currentRiddleData');
       }
     };
 

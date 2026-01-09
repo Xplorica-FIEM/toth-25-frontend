@@ -1,43 +1,16 @@
 /**
- * IndexedDB Riddle Cache with Encryption
+ * localStorage Riddle Cache with Encryption
  * Stores riddles encrypted using random session key
  * Enables offline-first gameplay
+ * Uses localStorage for maximum device compatibility
  */
 
 import { getSessionKey } from './sessionKey';
 
-const DB_NAME = 'TothRiddleCache';
-const DB_VERSION = 1;
-const STORE_NAME = 'riddles';
-const SCAN_QUEUE_STORE = 'scanQueue';
-
-/**
- * Open IndexedDB connection
- */
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-
-      // Riddles store
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const riddleStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-        riddleStore.createIndex('orderNumber', 'orderNumber', { unique: false });
-      }
-
-      // Scan queue store (for offline sync)
-      if (!db.objectStoreNames.contains(SCAN_QUEUE_STORE)) {
-        const scanStore = db.createObjectStore(SCAN_QUEUE_STORE, { keyPath: 'queueId', autoIncrement: true });
-        scanStore.createIndex('timestamp', 'timestamp', { unique: false });
-      }
-    };
-  });
-}
+// localStorage keys
+const RIDDLES_CACHE_KEY = 'toth_riddles_cache';
+const SCAN_QUEUE_KEY = 'toth_scan_queue';
+const CACHE_META_KEY = 'toth_cache_meta';
 
 /**
  * Encrypt text using session key
@@ -104,34 +77,42 @@ async function decryptText(encryptedData) {
 }
 
 /**
- * Store riddles in IndexedDB (encrypted)
+ * Store riddles in localStorage (encrypted)
  */
 export async function cacheRiddles(riddles) {
   try {
-    const db = await openDB();
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-
-    // Clear old riddles
-    await store.clear();
-
-    // Encrypt and store each riddle
-    for (const riddle of riddles) {
-      const encryptedPuzzleText = await encryptText(riddle.puzzleText);
-      
-      const cachedRiddle = {
-        id: riddle.id,
-        riddleName: riddle.riddleName,
-        encryptedPuzzleText,
-        orderNumber: riddle.orderNumber,
-        isActive: riddle.isActive,
-        cachedAt: Date.now()
-      };
-
-      await store.put(cachedRiddle);
+    // Validate riddles have puzzleText
+    const invalidRiddles = riddles.filter(r => !r.puzzleText || r.puzzleText.trim() === '');
+    if (invalidRiddles.length > 0) {
+      console.error('⚠️ Found riddles without puzzleText:', invalidRiddles.map(r => r.riddleName));
+      throw new Error(`${invalidRiddles.length} riddles have empty puzzleText`);
     }
 
-    console.log(`✅ Cached ${riddles.length} riddles (encrypted)`);
+    console.log(`🔐 Encrypting ${riddles.length} riddles...`);
+    
+    const encryptedRiddles = await Promise.all(
+      riddles.map(async (riddle) => {
+        const encryptedText = await encryptText(riddle.puzzleText);
+        console.log(`  ✓ ${riddle.riddleName}: ${riddle.puzzleText.length} chars → ${encryptedText.length} encrypted chars`);
+        
+        return {
+          id: riddle.id,
+          riddleName: riddle.riddleName,
+          encryptedPuzzleText: encryptedText,
+          orderNumber: riddle.orderNumber,
+          isActive: riddle.isActive,
+          cachedAt: Date.now()
+        };
+      })
+    );
+
+    localStorage.setItem(RIDDLES_CACHE_KEY, JSON.stringify(encryptedRiddles));
+    localStorage.setItem(CACHE_META_KEY, JSON.stringify({
+      cachedAt: Date.now(),
+      count: riddles.length
+    }));
+
+    console.log(`✅ Cached ${riddles.length} riddles (encrypted in localStorage)`);
     return true;
   } catch (error) {
     console.error('❌ Failed to cache riddles:', error);
@@ -144,20 +125,32 @@ export async function cacheRiddles(riddles) {
  */
 export async function getCachedRiddle(riddleId) {
   try {
-    const db = await openDB();
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
+    const cached = localStorage.getItem(RIDDLES_CACHE_KEY);
+    if (!cached) {
+      console.log('⚠️ No riddles in cache');
+      return null;
+    }
 
-    const cachedRiddle = await new Promise((resolve, reject) => {
-      const request = store.get(riddleId);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    const riddles = JSON.parse(cached);
+    const cachedRiddle = riddles.find(r => r.id === riddleId);
 
-    if (!cachedRiddle) return null;
+    if (!cachedRiddle) {
+      console.log('⚠️ Riddle not found in cache:', riddleId);
+      return null;
+    }
+
+    console.log('🔐 Found encrypted riddle:', cachedRiddle.riddleName);
+    console.log('🔐 Encrypted text length:', cachedRiddle.encryptedPuzzleText?.length);
 
     // Decrypt puzzle text
-    const puzzleText = await decryptText(cachedRiddle.encryptedPuzzleText);
+    let puzzleText = '';
+    try {
+      puzzleText = await decryptText(cachedRiddle.encryptedPuzzleText);
+      console.log('✅ Decrypted text length:', puzzleText?.length);
+    } catch (decryptError) {
+      console.error('❌ Decryption failed:', decryptError);
+      return null;
+    }
 
     return {
       id: cachedRiddle.id,
@@ -177,15 +170,10 @@ export async function getCachedRiddle(riddleId) {
  */
 export async function getAllCachedRiddles() {
   try {
-    const db = await openDB();
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
+    const cached = localStorage.getItem(RIDDLES_CACHE_KEY);
+    if (!cached) return [];
 
-    const cachedRiddles = await new Promise((resolve, reject) => {
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    const cachedRiddles = JSON.parse(cached);
 
     // Decrypt all riddles
     const decryptedRiddles = await Promise.all(
@@ -213,18 +201,19 @@ export async function getAllCachedRiddles() {
  */
 export async function queueScan(riddleId, scannedAt = new Date().toISOString()) {
   try {
-    const db = await openDB();
-    const transaction = db.transaction([SCAN_QUEUE_STORE], 'readwrite');
-    const store = transaction.objectStore(SCAN_QUEUE_STORE);
-
+    const queue = getScanQueue();
+    
     const scanEvent = {
+      queueId: Date.now() + Math.random(), // Simple unique ID
       riddleId,
       scannedAt,
       timestamp: Date.now(),
       synced: false
     };
 
-    await store.add(scanEvent);
+    queue.push(scanEvent);
+    localStorage.setItem(SCAN_QUEUE_KEY, JSON.stringify(queue));
+    
     console.log(`📥 Queued scan for riddle ${riddleId}`);
     return true;
   } catch (error) {
@@ -238,17 +227,8 @@ export async function queueScan(riddleId, scannedAt = new Date().toISOString()) 
  */
 export async function getPendingScans() {
   try {
-    const db = await openDB();
-    const transaction = db.transaction([SCAN_QUEUE_STORE], 'readonly');
-    const store = transaction.objectStore(SCAN_QUEUE_STORE);
-
-    const allScans = await new Promise((resolve, reject) => {
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-
-    return allScans.filter(scan => !scan.synced);
+    const queue = getScanQueue();
+    return queue.filter(scan => !scan.synced);
   } catch (error) {
     console.error('❌ Failed to get pending scans:', error);
     return [];
@@ -260,15 +240,13 @@ export async function getPendingScans() {
  */
 export async function markScanSynced(queueId) {
   try {
-    const db = await openDB();
-    const transaction = db.transaction([SCAN_QUEUE_STORE], 'readwrite');
-    const store = transaction.objectStore(SCAN_QUEUE_STORE);
-
-    const scan = await store.get(queueId);
-    if (scan) {
-      scan.synced = true;
-      scan.syncedAt = Date.now();
-      await store.put(scan);
+    const queue = getScanQueue();
+    const scanIndex = queue.findIndex(scan => scan.queueId === queueId);
+    
+    if (scanIndex !== -1) {
+      queue[scanIndex].synced = true;
+      queue[scanIndex].syncedAt = Date.now();
+      localStorage.setItem(SCAN_QUEUE_KEY, JSON.stringify(queue));
     }
 
     return true;
@@ -279,19 +257,26 @@ export async function markScanSynced(queueId) {
 }
 
 /**
+ * Helper: Get scan queue from localStorage
+ */
+function getScanQueue() {
+  try {
+    const queue = localStorage.getItem(SCAN_QUEUE_KEY);
+    return queue ? JSON.parse(queue) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+/**
  * Clear all cache (on logout)
  */
 export async function clearCache() {
   try {
-    const db = await openDB();
-    
-    const riddleTransaction = db.transaction([STORE_NAME], 'readwrite');
-    await riddleTransaction.objectStore(STORE_NAME).clear();
-
-    const scanTransaction = db.transaction([SCAN_QUEUE_STORE], 'readwrite');
-    await scanTransaction.objectStore(SCAN_QUEUE_STORE).clear();
-
-    console.log('🗑️ Cleared riddle cache');
+    localStorage.removeItem(RIDDLES_CACHE_KEY);
+    localStorage.removeItem(SCAN_QUEUE_KEY);
+    localStorage.removeItem(CACHE_META_KEY);
+    console.log('🗑️ Cleared riddle cache from localStorage');
     return true;
   } catch (error) {
     console.error('❌ Failed to clear cache:', error);
@@ -304,19 +289,39 @@ export async function clearCache() {
  */
 export async function isCachePopulated() {
   try {
-    const db = await openDB();
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-
-    const count = await new Promise((resolve, reject) => {
-      const request = store.count();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-
-    return count > 0;
+    const cached = localStorage.getItem(RIDDLES_CACHE_KEY);
+    if (!cached) return false;
+    
+    const riddles = JSON.parse(cached);
+    return riddles && riddles.length > 0;
   } catch (error) {
     return false;
+  }
+}
+
+/**
+ * Clean up old IndexedDB (migration helper)
+ * Automatically removes legacy IndexedDB storage
+ */
+export async function cleanupOldIndexedDB() {
+  try {
+    if (typeof indexedDB !== 'undefined') {
+      // Delete the old TothRiddleCache database
+      await new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('TothRiddleCache');
+        request.onsuccess = () => {
+          console.log('🗑️ Cleaned up old IndexedDB');
+          resolve();
+        };
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => {
+          console.warn('⚠️ IndexedDB deletion blocked - close other tabs');
+          resolve();
+        };
+      });
+    }
+  } catch (error) {
+    console.log('Note: Old IndexedDB cleanup skipped');
   }
 }
 
@@ -328,5 +333,6 @@ export default {
   getPendingScans,
   markScanSynced,
   clearCache,
-  isCachePopulated
+  isCachePopulated,
+  cleanupOldIndexedDB
 };

@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Compass, AlertCircle, Loader2, Sparkles } from "lucide-react";
-import { verifyOTP, resendOTP, prefetchRiddles } from "@/utils/api";
+import { verifyOTP, resendOTP } from "@/utils/api";
 import { saveToken, saveUser } from "@/utils/auth";
-import { cacheRiddles, isIndexedDBSupported } from "@/utils/cache";
 
 export default function VerifyOtp() {
   const router = useRouter();
@@ -78,48 +77,22 @@ export default function VerifyOtp() {
     setPrefetchMessage("🗺️ Gathering ancient maps...");
     
     try {
-      // Check if browser supports offline mode
-      if (!isIndexedDBSupported()) {
-        console.warn("⚠️ Offline mode not supported");
-        setPrefetchMessage("⚔️ Preparing your quest...");
-        setTimeout(() => router.push("/dashboard"), 1000);
-        return;
-      }
-
-      // Step 1: Fetch riddles
+      // Show treasure hunt animations
       setPrefetchMessage("🏴‍☠️ Decoding treasure clues...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      const response = await prefetchRiddles();
-      
-      if (!response.ok || !response.data?.riddles) {
-        console.warn("⚠️ Quest preparation incomplete");
-        setPrefetchMessage("⚔️ Preparing your quest...");
-        setTimeout(() => router.push("/dashboard"), 1000);
-        return;
-      }
-
-      // Step 2: Prepare for offline play
       setPrefetchMessage("⚓ Charting your course...");
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      const cacheResult = await cacheRiddles(response.data.riddles);
-      
-      if (cacheResult.success) {
-        console.log(`✅ Quest prepared with ${cacheResult.count} challenges`);
-      }
-
-      // Step 3: Begin adventure
       setPrefetchMessage("💎 Opening the treasure vault...");
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 800));
       
+      // Cache initialization will happen on dashboard page
       router.push("/dashboard");
       
     } catch (error) {
-      console.error("❌ Prefetch error:", error);
-      // Continue to dashboard even if prefetch fails
-      setPrefetchMessage("🎯 Loading game...");
-      setTimeout(() => router.push("/dashboard"), 1000);
+      console.error("❌ Navigation error:", error);
+      router.push("/dashboard");
     }
   };
 
