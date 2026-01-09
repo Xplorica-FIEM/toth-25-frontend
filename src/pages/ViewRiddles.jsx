@@ -21,7 +21,7 @@ const ViewRiddles = () => {
       if (riddleId) {
         // Update URL with cached ID (without reloading)
         router.replace({
-          pathname: '/viewriddles',
+          pathname: '/ViewRiddles',
           query: { id: riddleId }
         }, undefined, { shallow: true });
       } else {
