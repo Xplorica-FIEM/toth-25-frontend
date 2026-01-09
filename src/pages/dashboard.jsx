@@ -10,6 +10,9 @@ import dynamic from "next/dynamic";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { getCurrentUser, getProgress, getRiddlesMetadata } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
+import { getSessionKey } from "@/utils/sessionKey";
+import { cacheRiddles, isCachePopulated } from "@/utils/riddleCache";
+import { startBackgroundSync, stopBackgroundSync } from "@/utils/backgroundSync";
 
 const Scan = dynamic(() => import("../components/scan"), {
   ssr: false,
@@ -26,6 +29,8 @@ function DashboardContent() {
 
   useEffect(() => {
     fetchDashboardData();
+    initializeCache();
+    startBackgroundSync();
 
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -34,7 +39,10 @@ function DashboardContent() {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      stopBackgroundSync();
+    };
   }, []);
 
   const fetchDashboardData = async () => {
@@ -65,7 +73,41 @@ function DashboardContent() {
     }
   };
 
-  const handleLogout = () => {
+  const initializeCache = async () => {
+    try {
+      // Ensure session key is generated
+      getSessionKey();
+
+      // Check if cache is already populated
+      const cacheExists = await isCachePopulated();
+      if (cacheExists) {
+        console.log('📦 Riddle cache already populated');
+        return;
+      }
+
+      // Fetch all riddles from backend
+      console.log('📥 Fetching riddles for offline cache...');
+      const response = await getRiddlesMetadata();
+      
+      if (response.ok && response.data.riddles) {
+        await cacheRiddles(response.data.riddles);
+        console.log('✅ Riddles cached successfully');
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize cache:', error);
+      // Non-blocking - app continues to work
+    }
+  };
+
+  const handleLogout = async () => {
+    // Clear cache and stop sync before logout
+    const { clearCache } = await import('@/utils/riddleCache');
+    const { clearSessionKey } = await import('@/utils/sessionKey');
+    
+    await clearCache();
+    clearSessionKey();
+    stopBackgroundSync();
+    
     logout();
     router.push("/login");
   };
