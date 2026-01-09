@@ -72,32 +72,43 @@ function AdminRiddlesContent() {
     }
   };
 
-  const handleDownloadQR = (riddle) => {
-    if (!riddle.qrCodeBase64) {
-      setErrorMessage("QR code not available for this riddle");
+  const handleDownloadQR = async (riddle) => {
+    try {
+      // Generate QR code with plain riddle ID (6-character ID)
+      const QRCode = (await import('qrcode')).default;
+      
+      // Use plain riddle ID as QR data
+      const qrData = riddle.id;
+      
+      // Generate QR code as data URL
+      const qrCodeDataUrl = await QRCode.toDataURL(qrData, {
+        width: 512,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'H'
+      });
+      
+      // Convert data URL to blob and download
+      const response = await fetch(qrCodeDataUrl);
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${riddle.orderNumber}-${riddle.riddleName.replace(/\s+/g, '-')}-QR.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('QR generation error:', error);
+      setErrorMessage("Failed to generate QR code");
       setShowErrorModal(true);
-      return;
     }
-
-    // Convert base64 to blob and download
-    const base64Data = riddle.qrCodeBase64.split(',')[1];
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    const blob = new Blob([byteArray], { type: 'image/png' });
-    
-    // Create download link
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${riddle.orderNumber}-${riddle.riddleName.replace(/\s+/g, '-')}-QR.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   const handleViewRiddle = (riddleId) => {
