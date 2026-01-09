@@ -96,9 +96,10 @@ export default function Register() {
       });
 
       const data = await res.json();
+      console.log('Register response:', { status: res.status, data });
 
       if (!res.ok) {
-        setErrors({ submit: data.message || 'Registration failed' });
+        setErrors({ submit: data.error || data.message || 'Registration failed' });
         setLoading(false);
         return;
       }
