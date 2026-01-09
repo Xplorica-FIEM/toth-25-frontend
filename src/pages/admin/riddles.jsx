@@ -102,7 +102,7 @@ function AdminRiddlesContent() {
 
   const handleViewRiddle = (riddleId) => {
     // View riddle as users see it (same page users get after scanning QR)
-    router.push(`/viewriddles?id=${riddleId}`);
+    router.push(`/ViewRiddles?id=${riddleId}`);
   };
 
   const handleEditRiddle = (riddleId) => {

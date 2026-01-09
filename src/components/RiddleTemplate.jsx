@@ -78,7 +78,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
       if (currentIndex !== -1 && currentIndex < sortedRiddles.length - 1) {
         // Go to next riddle
         const nextRiddle = sortedRiddles[currentIndex + 1];
-        router.push(`/viewriddles?id=${nextRiddle.id}`);
+        router.push(`/ViewRiddles?id=${nextRiddle.id}`);
       } else {
         // No more riddles, go to riddles list
         router.push('/admin/riddles');
@@ -98,7 +98,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
       if (currentIndex !== -1 && currentIndex > 0) {
         // Go to previous riddle
         const previousRiddle = sortedRiddles[currentIndex - 1];
-        router.push(`/viewriddles?id=${previousRiddle.id}`);
+        router.push(`/ViewRiddles?id=${previousRiddle.id}`);
       } else {
         // No previous riddles, go to riddles list
         router.push('/admin/riddles');
