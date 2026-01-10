@@ -318,7 +318,6 @@ export default {
   getProgress,
   getMyScans,
   completeGame,
-  prefetchRiddles,
   syncOfflineScans,
   
   // Leaderboard
