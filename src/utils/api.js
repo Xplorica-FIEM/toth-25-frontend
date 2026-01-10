@@ -103,16 +103,6 @@ export const resendOTP = async (email) => {
 };
 
 /**
- * Complete profile (Step 3)
- */
-export const completeProfile = async (email, fullName, classRollNo, phoneNumber, department) => {
-  return fetchAPI('/api/auth/complete-profile', {
-    method: 'POST',
-    body: JSON.stringify({ email, fullName, classRollNo, phoneNumber, department }),
-  });
-};
-
-/**
  * Login
  */
 export const login = async (email, password) => {
@@ -307,7 +297,6 @@ export default {
   register,
   verifyOTP,
   resendOTP,
-  completeProfile,
   login,
   getCurrentUser,
   
