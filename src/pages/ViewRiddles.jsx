@@ -139,8 +139,7 @@ const ViewRiddles = () => {
     <RiddleTemplate 
       riddleContent={riddle.puzzleText}
       title={riddle.riddleName}
-      orderNumber={riddle.orderNumber}
-      backgroundImage={getBackgroundImage(riddle.orderNumber)}
+      backgroundImage={getBackgroundImage(riddle.id)}
       isAuthenticated={true}
       riddleId={riddle.id}
     />
@@ -148,18 +147,10 @@ const ViewRiddles = () => {
 };
 
 // Helper for background images
-const getBackgroundImage = (orderNumber) => {
-  const backgrounds = {
-    1: '/toth1.png',
-    2: '/toth2.png',
-    3: '/toth3.png',
-    4: '/toth4.png',
-    5: '/toth5.png',
-    6: '/toth6.png',
-    7: '/toth7.png',
-    8: '/toth8.png'  
-  };
-  return backgrounds[orderNumber] || '/toth1.png';
+const getBackgroundImage = (riddleId) => {
+  const backgrounds = ['/toth1.png', '/toth2.png', '/toth3.png', '/toth4.png', '/toth5.png', '/toth6.png', '/toth7.png', '/toth8.png'];
+  const hash = riddleId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return backgrounds[hash % backgrounds.length];
 };
 
 export default ViewRiddles;

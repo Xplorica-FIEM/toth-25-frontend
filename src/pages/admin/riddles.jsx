@@ -99,7 +99,7 @@ function AdminRiddlesContent() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${riddle.orderNumber}-${riddle.riddleName.replace(/\s+/g, '-')}-QR.png`;
+      link.download = `${riddle.riddleName.replace(/\s+/g, '-')}-QR.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -149,7 +149,7 @@ function AdminRiddlesContent() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2 sm:gap-4 flex-1">
                 <span className="text-base sm:text-lg font-semibold text-amber-100">
-                  {riddle.orderNumber}. {riddle.riddleName}
+                  {riddle.riddleName}
                 </span>
               </div>
               

@@ -17,7 +17,6 @@ function EditRiddleContent() {
   const [formData, setFormData] = useState({
     riddleName: "",
     puzzleText: "",
-    orderNumber: 1,
     isActive: true,
   });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -42,7 +41,6 @@ function EditRiddleContent() {
           setFormData({
             riddleName: currentRiddle.riddleName,
             puzzleText: currentRiddle.puzzleText,
-            orderNumber: currentRiddle.orderNumber,
             isActive: currentRiddle.isActive,
           });
         } else {
@@ -63,7 +61,7 @@ function EditRiddleContent() {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : (name === "orderNumber" ? parseInt(value) || "" : value)
+      [name]: type === "checkbox" ? checked : value
     }));
   };
 
@@ -99,7 +97,7 @@ function EditRiddleContent() {
     if (riddle && (
       formData.riddleName !== riddle.riddleName ||
       formData.puzzleText !== riddle.puzzleText ||
-      formData.orderNumber !== riddle.orderNumber ||
+
       formData.isActive !== riddle.isActive
     )) {
       setShowDiscardModal(true);
@@ -166,25 +164,6 @@ function EditRiddleContent() {
               className="w-full px-4 py-3 bg-stone-800 border border-stone-700 rounded-lg text-amber-100 placeholder-amber-200/40 focus:outline-none focus:border-amber-600 resize-none"
               required
             />
-          </div>
-
-          {/* Order Number */}
-          <div>
-            <label className="block text-amber-100 font-medium mb-2">
-              Order Number
-            </label>
-            <input
-              type="number"
-              name="orderNumber"
-              value={formData.orderNumber}
-              onChange={handleChange}
-              min="1"
-              step="1"
-              className="w-full px-4 py-3 bg-stone-800 border border-stone-700 rounded-lg text-amber-100 focus:outline-none focus:border-amber-600"
-            />
-            <p className="text-amber-200/60 text-sm mt-1">
-              Sequential number for ordering riddles. If you choose an existing number, the riddles will swap positions.
-            </p>
           </div>
 
           {/* Active Status */}

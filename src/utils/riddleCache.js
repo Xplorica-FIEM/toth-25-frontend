@@ -99,7 +99,6 @@ export async function cacheRiddles(riddles) {
           id: riddle.id,
           riddleName: riddle.riddleName,
           encryptedPuzzleText: encryptedText,
-          orderNumber: riddle.orderNumber,
           isActive: riddle.isActive,
           cachedAt: Date.now()
         };
