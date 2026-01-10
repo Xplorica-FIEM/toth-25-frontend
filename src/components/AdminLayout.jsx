@@ -52,7 +52,7 @@ export default function AdminLayout({ children, activeTab }) {
   ];
 
   return (
-    <div className="min-h-screen bg-stone-950 flex relative">
+    <div className="h-screen bg-stone-950 flex relative overflow-hidden">
       {/* Mobile Overlay */}
       {isMobile && sidebarOpen && (
         <div 
@@ -69,7 +69,7 @@ export default function AdminLayout({ children, activeTab }) {
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full'
               }`
             : sidebarOpen ? "w-64" : "w-20"
-        } bg-stone-900 border-r border-stone-800 flex flex-col`}
+        } bg-stone-900 border-r border-stone-800 flex flex-col h-screen`}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-stone-800 flex items-center justify-between">
@@ -145,10 +145,10 @@ export default function AdminLayout({ children, activeTab }) {
       </aside>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-auto ${isMobile ? 'w-full' : ''}`}>
+      <main className={`flex-1 flex flex-col h-screen overflow-hidden ${isMobile ? 'w-full' : ''}`}>
         {/* Mobile Menu Button */}
         {isMobile && !sidebarOpen && (
-          <div className="sticky top-0 z-30 bg-stone-900/95 backdrop-blur-sm border-b border-stone-800 p-4">
+          <div className="sticky top-0 z-30 bg-stone-900/95 backdrop-blur-sm border-b border-stone-800 p-4 flex-shrink-0">
             <button
               onClick={() => setSidebarOpen(true)}
               className="flex items-center gap-2 text-amber-200 hover:text-amber-100"
@@ -159,7 +159,7 @@ export default function AdminLayout({ children, activeTab }) {
           </div>
         )}
         
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">{children}</div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-7xl w-full mx-auto">{children}</div>
       </main>
     </div>
   );
