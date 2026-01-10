@@ -11,7 +11,6 @@ function CreateRiddleContent() {
   const [form, setForm] = useState({
     riddleName: "",
     puzzleText: "",
-    orderNumber: 1,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,7 +31,6 @@ function CreateRiddleContent() {
       const response = await createRiddle({
         riddleName: form.riddleName,
         puzzleText: form.puzzleText,
-        orderNumber: parseInt(form.orderNumber),
       });
 
       if (response.ok) {
@@ -107,22 +105,6 @@ function CreateRiddleContent() {
                   required
                   rows={6}
                   placeholder="I speak without a mouth and hear without ears..."
-                  className="w-full p-3 rounded bg-black/40 text-white border border-amber-900/50 focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-amber-200 text-sm font-semibold block mb-2">
-                  Order Number *
-                </label>
-                <input
-                  type="number"
-                  name="orderNumber"
-                  value={form.orderNumber}
-                  onChange={handleChange}
-                  required
-                  min="1"
-                  placeholder="1"
                   className="w-full p-3 rounded bg-black/40 text-white border border-amber-900/50 focus:border-amber-500 focus:outline-none"
                 />
               </div>
