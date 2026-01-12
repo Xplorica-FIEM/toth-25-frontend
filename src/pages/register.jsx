@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { UserPlus, Mail, Phone, User, Hash, Lock, Map, Anchor, Ship, Scroll, Compass } from 'lucide-react';
+import { DEPARTMENTS } from '../constants/departments';
 
 export default function Register() {
   const router = useRouter();
@@ -17,21 +18,6 @@ export default function Register() {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-
-  const departments = [
-    { code: "CSE", name: "Computer Science & Engineering" },
-    { code: "ECE", name: "Electronics & Communication Engineering" },
-    { code: "EEE", name: "Electrical & Electronics Engineering" },
-    { code: "MECH", name: "Mechanical Engineering" },
-    { code: "CIVIL", name: "Civil Engineering" },
-    { code: "IT", name: "Information Technology" },
-    { code: "CHE", name: "Chemical Engineering" },
-    { code: "BME", name: "Biomedical Engineering" },
-    { code: "AERO", name: "Aeronautical Engineering" },
-    { code: "AUTO", name: "Automobile Engineering" },
-    { code: "MBA", name: "Master of Business Administration" },
-    { code: "MCA", name: "Master of Computer Applications" }
-  ];
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -228,7 +214,7 @@ export default function Register() {
                   className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base focus:border-amber-500 focus:outline-none transition-colors appearance-none cursor-pointer"
                 >
                   <option value="" className="bg-stone-900">Select your guild</option>
-                  {departments.map(dept => (
+                  {DEPARTMENTS.map(dept => (
                     <option key={dept.code} value={dept.code} className="bg-stone-900">
                       {dept.code} - {dept.name}
                     </option>
