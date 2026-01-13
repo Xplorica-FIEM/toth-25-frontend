@@ -5,6 +5,7 @@ import { BrowserQRCodeReader } from "@zxing/browser";
 import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera, Wifi, WifiOff } from "lucide-react"; 
 import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
 import { triggerSync } from "@/utils/backgroundSync";
+import { decryptAES } from "@/utils/crypto";
 
 export default function Scan({ onClose }) {
   const router = useRouter();
@@ -164,114 +165,209 @@ export default function Scan({ onClose }) {
     setLoading(true);
 
     try {
-      // Check if it's a meme riddle (simple 6-char ID, no encryption)
+      // 1. Handle Encrypted Riddle (ID:Secret format)
+      if (qrData.includes(':')) {
+        const parts = qrData.split(':');
+        
+        // Basic format validation: Must have at least ID and Secret
+        if (parts.length < 2 || !parts[0] || !parts[1]) {
+           throw new Error("Invalid QR Code");
+        }
+
+        const riddleId = parts[0];
+        // Join rest in case secret itself contains colons, though unlikey for hex
+        const encryptionSecret = parts.slice(1).join(':'); 
+
+        // Check locked riddles in local storage
+        let lockedRiddles = {};
+        try {
+          const stored = localStorage.getItem('locked-riddles');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            // Verify it's a map (object) and not an array
+            if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+              lockedRiddles = parsed;
+            }
+          }
+        } catch (e) {
+          console.error("Local storage error:", e);
+          // Proceed with empty object
+        }
+
+        // Access directly by ID (Key-Value pair)
+        const lockedRiddle = lockedRiddles[riddleId];
+
+        if (!lockedRiddle) {
+          // Rule: If ID matches no locally locked riddle, consider it invalid for this flow
+          throw new Error("Invalid QR Code");
+        }
+
+        setLoadingMessage("🔓 Decrypting riddle...");
+        
+        try {
+          const iv = process.env.NEXT_PUBLIC_AES_IV;
+          
+          if (!iv) {
+             console.error("AES IV missing in environment");
+             throw new Error("System configuration error");
+          }
+
+          const encryptedText = lockedRiddle.puzzleText || lockedRiddle.encryptedText;
+          if (!encryptedText) throw new Error("No encrypted text available");
+
+          // Attempt decryption
+          const decryptedText = await decryptAES(encryptedText, encryptionSecret, iv);
+          
+          if (!decryptedText) throw new Error("Decryption returned empty");
+
+          const riddleData = {
+            ...lockedRiddle,
+            puzzleText: decryptedText,
+            isUnlocked: true
+          };
+
+          // Save to unlocked-riddles object in localStorage
+          try {
+            const unlockedStored = localStorage.getItem('unlocked-riddles');
+            let unlockedRiddles = {};
+            if (unlockedStored) {
+              const parsed = JSON.parse(unlockedStored);
+              if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                unlockedRiddles = parsed;
+              }
+            }
+            // Add/Update the specific riddle in the map
+            unlockedRiddles[riddleId] = riddleData;
+            localStorage.setItem('unlocked-riddles', JSON.stringify(unlockedRiddles));
+          } catch(err) {
+            console.error("Failed to update unlocked riddles storage", err);
+          }
+
+          // Store and Redirect
+          localStorage.setItem('currentRiddleId', riddleId);
+          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+          
+          await router.push(
+            {
+              pathname: '/ViewRiddles',
+              query: { id: riddleId }
+            },
+            '/ViewRiddles'
+          );
+          onClose();
+          return;
+          
+        } catch (decryptionError) {
+          console.error("Decryption failed:", decryptionError);
+          // Catch specific decryption failures (wrong key, bad data)
+          throw new Error("Invalid QR Code");
+        }
+      }
+
+      // 2. Meme Riddle Check (Legacy Flow for non-colon QRs)
       if (qrData.length === 6 && /^[A-Z0-9]{6}$/.test(qrData)) {
         setLoadingMessage("🎭 Checking for surprises...");
         
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/meme-riddles/${qrData}`, {
+          const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+          const response = await fetch(`${baseUrl}/api/meme-riddles/${qrData}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           
           if (response.ok) {
             const data = await response.json();
-            // It's a meme riddle! Show the meme
             setLoading(false);
             showMemeModal(data.memeRiddle);
             return;
           }
-          // If not found (404), fall through to regular riddle logic
         } catch (memeError) {
-          // Network error or other issue, fall through to regular riddle logic
+          // Silently fail meme check and continue to standard riddle check
           console.log('Meme check failed, trying regular riddle');
         }
       }
 
-      // Step 1: QR data is plain riddle ID (no decryption needed)
-      const riddleId = qrData.trim();
+      // 3. Plain Riddle ID (Standard Flow)
+      const plainRiddleId = qrData.trim();
       
-      if (!riddleId || riddleId.length !== 6) {
-        throw new Error("Invalid riddle ID format");
-      }
+      if (!plainRiddleId.includes(':') && plainRiddleId.length === 6) {
+        // Step 2: Check localStorage cache first
+        const cachedRiddle = await getCachedRiddle(plainRiddleId);
+        
+        let riddleData = null;
+        
+        if (cachedRiddle) {
+          console.log(`✅ Cache hit for riddle id: ${plainRiddleId}`);
+          
+          riddleData = {
+            id: cachedRiddle.id,
+            riddleName: cachedRiddle.riddleName,
+            puzzleText: cachedRiddle.puzzleText,
+            orderNumber: cachedRiddle.orderNumber
+          };
+          
+          await queueScan(plainRiddleId);
+          triggerSync();
+          
+          localStorage.setItem('currentRiddleId', plainRiddleId);
+          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+          
+          await router.push(
+            {
+              pathname: '/ViewRiddles',
+              query: { id: plainRiddleId }
+            },
+            '/ViewRiddles'
+          );
+          onClose();
+          return;
+        } else {
+          // Cache miss: Call backend API
+          setLoadingMessage("⚡ Loading riddle...");
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/scan`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ riddleId: plainRiddleId })
+          });
 
-      // Step 2: Check localStorage cache first (instant lookup)
-      const cachedRiddle = await getCachedRiddle(riddleId);
-      
-      let riddleData = null;
-      
-      if (cachedRiddle) {
-        console.log(`✅ Cache hit for riddle id: ${riddleId}`, cachedRiddle.riddleName);
-        console.log('📝 Puzzle text length:', cachedRiddle.puzzleText?.length, 'chars');
-        console.log('📝 First 50 chars:', cachedRiddle.puzzleText?.substring(0, 50));
-        
-        // Use cached riddle (already decrypted by getCachedRiddle)
-        riddleData = {
-          id: cachedRiddle.id,
-          riddleName: cachedRiddle.riddleName,
-          puzzleText: cachedRiddle.puzzleText,
-          orderNumber: cachedRiddle.orderNumber
-        };
-        
-        // Queue scan for background sync (non-blocking)
-        await queueScan(riddleId);
-        // Trigger immediate sync attempt (will retry in background if fails)
-        triggerSync();
-        
-        // Store for ViewRiddles page (instant access)
-        localStorage.setItem('currentRiddleId', riddleId);
-        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-        console.log('💾 Stored in localStorage, text length:', riddleData.puzzleText?.length);
-        
-        // Instant redirect - no artificial delays
-        await router.push(
-          {
-            pathname: '/ViewRiddles',
-            query: { id: riddleId }
-          },
-          '/ViewRiddles'
-        );
-        onClose();
-        return; // Exit early for cache hits
-      } else {
-        console.log(`⚠️ Cache miss for riddle id: ${riddleId} - fetching from backend`);
-        // Cache miss: Call backend API with plain riddleId
-        setLoadingMessage("⚡ Loading riddle...");
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/scan`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
-          body: JSON.stringify({ riddleId })
-        });
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || errorData.message || "Scan failed");
+          }
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || errorData.message || "Scan failed");
+          const data = await response.json();
+          riddleData = data.riddle;
+          
+          localStorage.setItem('currentRiddleId', plainRiddleId);
+          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+          
+          await router.push(
+            {
+              pathname: '/ViewRiddles',
+              query: { id: plainRiddleId }
+            },
+            '/ViewRiddles'
+          );
+          onClose();
+          return;
         }
-
-        const data = await response.json();
-        riddleData = data.riddle;
-        
-        // Store for ViewRiddles page
-        localStorage.setItem('currentRiddleId', riddleId);
-        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-        
-        // Redirect immediately
-        await router.push(
-          {
-            pathname: '/ViewRiddles',
-            query: { id: riddleId }
-          },
-          '/ViewRiddles'
-        );
-        onClose();
+      } else {
+         // Fails format check and didn't match previous flows
+         throw new Error("Invalid QR Code");
       }
 
     } catch (err) {
       console.error('❌ Scan error:', err);
-      setError(err.message);
+      // Normalize error message to just "Invalid QR Code" for format/decryption issues
+      // as requested, while keeping network errors specific if possible
+      let message = err.message;
+      if (message.includes("Invalid QR") || message.includes("Decryption")) {
+          message = "Invalid QR Code";
+      }
+      setError(message);
       setLoading(false);
     }
   };
