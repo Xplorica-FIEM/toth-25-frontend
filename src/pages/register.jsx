@@ -87,7 +87,22 @@ export default function Register() {
       console.log('Register response:', { status: res.status, data });
 
       if (!res.ok) {
-        setErrors({ submit: data.error || data.message || 'Registration failed' });
+        const errorMessage = data.error || data.message || 'Registration failed';
+        
+        // Check if email already registered - redirect to login
+        if (errorMessage.toLowerCase().includes('email') && 
+            (errorMessage.toLowerCase().includes('already') || 
+             errorMessage.toLowerCase().includes('exists') || 
+             errorMessage.toLowerCase().includes('registered'))) {
+          // Show error briefly then redirect
+          setErrors({ submit: errorMessage });
+          setTimeout(() => {
+            router.push('/login');
+          }, 2000);
+          return;
+        }
+        
+        setErrors({ submit: errorMessage });
         setLoading(false);
         return;
       }
