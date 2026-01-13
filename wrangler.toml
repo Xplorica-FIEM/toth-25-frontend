@@ -1,0 +1,5 @@
+name = "toth-25-frontend"
+compatibility_date = "2026-01-13"
+
+[site]
+bucket = "./out"
