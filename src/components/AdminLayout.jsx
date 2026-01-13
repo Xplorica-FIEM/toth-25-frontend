@@ -79,7 +79,7 @@ export default function AdminLayout({ children, activeTab }) {
                 <Shield className="size-8 text-amber-400" />
                 <div>
                   <h2 className="text-amber-100 font-bold">Admin Panel</h2>
-                  <p className="text-amber-200/60 text-xs">TOTH 2025</p>
+                  <p className="text-amber-200/60 text-xs">TOTH 2026</p>
                 </div>
               </div>
               <button

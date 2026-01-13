@@ -108,7 +108,7 @@ function DashboardContent() {
               {/* Logo */}
               <div className="flex items-center gap-2">
                 <Compass className="size-6 sm:size-7 text-amber-400" />
-                <h1 className="text-amber-100 text-lg sm:text-xl font-bold">TOTH-25</h1>
+                <h1 className="text-amber-100 text-lg sm:text-xl font-bold">TOTH-26</h1>
               </div>
 
               {/* Profile Section */}
