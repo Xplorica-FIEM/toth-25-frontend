@@ -6,7 +6,7 @@ import { Lock, Unlock, ArrowLeft, CheckCircle, Edit, Scroll, ScanLine } from 'lu
 import { getUser } from '@/utils/auth';
 import { getAdminRiddles } from '@/utils/api';
 
-const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, isAuthenticated, riddleId }) => {
+const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, isAuthenticated, riddleId, onClose }) => {
   const router = useRouter();
   const [isRevealed, setIsRevealed] = useState(true); // Auto-reveal immediately
   const [currentUser, setCurrentUser] = useState(null);
@@ -253,19 +253,17 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
                   Decipher the ancient riddle and continue thy noble quest
                 </p>
 
-                {/* User Scan Again Button - Shown only for non-admin users */}
-                {!currentUser?.isAdmin && (
-                  <div className="pt-2 md:pt-3">
-                    <button
-                      onClick={() => router.push('/dashboard')}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold shadow-lg border border-amber-400/50 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
-                    >
-                      <ScanLine className="size-4 md:size-5" />
-                      <span className="hidden sm:inline">Scan Another Riddle</span>
-                      <span className="sm:hidden">Scan Again</span>
-                    </button>
-                  </div>
-                )}
+                {/* Scan Again Button - Shown for all users */}
+                <div className="pt-2 md:pt-3">
+                  <button
+                    onClick={() => onClose ? onClose() : router.push('/dashboard')}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold shadow-lg border border-amber-400/50 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
+                  >
+                    <ScanLine className="size-4 md:size-5" />
+                    <span className="hidden sm:inline">Scan Another Riddle</span>
+                    <span className="sm:hidden">Scan Again</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
