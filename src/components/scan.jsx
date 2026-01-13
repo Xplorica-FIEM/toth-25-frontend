@@ -7,7 +7,7 @@ import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
 import { triggerSync } from "@/utils/backgroundSync";
 import { decryptAES } from "@/utils/crypto";
 
-export default function Scan({ onClose }) {
+export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess prop
   const router = useRouter();
   const videoRef = useRef(null);
   const readerRef = useRef(null);
@@ -22,7 +22,7 @@ export default function Scan({ onClose }) {
   const [availableCameras, setAvailableCameras] = useState([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
-  const [memeData, setMemeData] = useState(null);
+  
   const videoStreamRef = useRef(null);
   const scanIntervalRef = useRef(null);
 
@@ -167,131 +167,93 @@ export default function Scan({ onClose }) {
     try {
       // 1. Handle Encrypted Riddle (ID:Secret format)
       if (qrData.includes(':')) {
-        const parts = qrData.split(':');
+        const [riddleId, secret] = qrData.split(':');
+        const encryptionSecret = secret.trim();
         
-        // Basic format validation: Must have at least ID and Secret
-        if (parts.length < 2 || !parts[0] || !parts[1]) {
-           throw new Error("Invalid QR Code");
+        // CORRECTED: Use the specific IV from environment variables
+        const iv = process.env.NEXT_PUBLIC_AES_IV;
+        
+        if (!iv) {
+          console.error("Missing NEXT_PUBLIC_AES_IV in environment variables");
+          throw new Error("Decryption configuration missing");
         }
 
-        const riddleId = parts[0];
-        // Join rest in case secret itself contains colons, though unlikey for hex
-        const encryptionSecret = parts.slice(1).join(':'); 
+        // 2. Fetch from localStorage (locked-riddles)
+        const lockedRiddlesStr = localStorage.getItem('locked-riddles');
+        const lockedMap = lockedRiddlesStr ? JSON.parse(lockedRiddlesStr) : {};
+        const lockedData = lockedMap[riddleId];
 
-        // Check locked riddles in local storage
-        let lockedRiddles = {};
+        if (!lockedData) {
+            throw new Error("Riddle definition not found on device.");
+        }
+
+        // Handle data as a direct string based on your localStorage structure
+        // If lockedData is "abcd...", use it directly. If it's an object, check properties.
+        const encryptedText = typeof lockedData === 'string' 
+            ? lockedData 
+            : (lockedData.puzzleText || lockedData.encryptedText);
+
+        if (!encryptedText) throw new Error("No encrypted text available");
+
+        // Attempt decryption
+        let decryptedText;
         try {
-          const stored = localStorage.getItem('locked-riddles');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            // Verify it's a map (object) and not an array
+            decryptedText = await decryptAES(encryptedText, encryptionSecret, iv);
+        } catch (decryptErr) {
+            console.error("Decryption failed:", decryptErr);
+            throw new Error("Invalid Secret Key. This QR code doesn't match the current riddle.");
+        }
+        
+        if (!decryptedText) throw new Error("Decryption returned empty");
+
+        const riddleData = {
+          id: riddleId,
+          puzzleText: decryptedText,
+          isUnlocked: true
+        };
+
+        // Save to unlocked-riddles object in localStorage
+        try {
+          const unlockedStored = localStorage.getItem('unlocked-riddles');
+          let unlockedRiddles = {};
+          if (unlockedStored) {
+            const parsed = JSON.parse(unlockedStored);
             if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-              lockedRiddles = parsed;
+              unlockedRiddles = parsed;
             }
           }
-        } catch (e) {
-          console.error("Local storage error:", e);
-          // Proceed with empty object
+          // Add/Update the specific riddle in the map
+          unlockedRiddles[riddleId] = riddleData;
+          localStorage.setItem('unlocked-riddles', JSON.stringify(unlockedRiddles));
+        } catch(err) {
+          console.error("Failed to update unlocked riddles storage", err);
         }
 
-        // Access directly by ID (Key-Value pair)
-        const lockedRiddle = lockedRiddles[riddleId];
-
-        if (!lockedRiddle) {
-          // Rule: If ID matches no locally locked riddle, consider it invalid for this flow
-          throw new Error("Invalid QR Code");
-        }
-
-        setLoadingMessage("🔓 Decrypting riddle...");
+        // Store and Redirect
+        localStorage.setItem('currentRiddleId', riddleId);
+        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
         
-        try {
-          const iv = process.env.NEXT_PUBLIC_AES_IV;
-          
-          if (!iv) {
-             console.error("AES IV missing in environment");
-             throw new Error("System configuration error");
-          }
-
-          const encryptedText = lockedRiddle.puzzleText || lockedRiddle.encryptedText;
-          if (!encryptedText) throw new Error("No encrypted text available");
-
-          // Attempt decryption
-          const decryptedText = await decryptAES(encryptedText, encryptionSecret, iv);
-          
-          if (!decryptedText) throw new Error("Decryption returned empty");
-
-          const riddleData = {
-            ...lockedRiddle,
-            puzzleText: decryptedText,
-            isUnlocked: true
-          };
-
-          // Save to unlocked-riddles object in localStorage
-          try {
-            const unlockedStored = localStorage.getItem('unlocked-riddles');
-            let unlockedRiddles = {};
-            if (unlockedStored) {
-              const parsed = JSON.parse(unlockedStored);
-              if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-                unlockedRiddles = parsed;
-              }
-            }
-            // Add/Update the specific riddle in the map
-            unlockedRiddles[riddleId] = riddleData;
-            localStorage.setItem('unlocked-riddles', JSON.stringify(unlockedRiddles));
-          } catch(err) {
-            console.error("Failed to update unlocked riddles storage", err);
-          }
-
-          // Store and Redirect
-          localStorage.setItem('currentRiddleId', riddleId);
-          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-          
-          await router.push(
-            {
-              pathname: '/ViewRiddles',
-              query: { id: riddleId }
-            },
-            '/ViewRiddles'
-          );
-          onClose();
-          return;
-          
-        } catch (decryptionError) {
-          console.error("Decryption failed:", decryptionError);
-          // Catch specific decryption failures (wrong key, bad data)
-          throw new Error("Invalid QR Code");
+        if (onScanSuccess) {
+          onScanSuccess(riddleId);
+          return; // Exit without closing modal or redirecting
         }
+
+        await router.push(
+          {
+            pathname: '/ViewRiddles',
+            query: { id: riddleId }
+          },
+          '/ViewRiddles'
+        );
+        onClose();
+        return;
       }
 
-      // 2. Meme Riddle Check (Legacy Flow for non-colon QRs)
-      if (qrData.length === 6 && /^[A-Z0-9]{6}$/.test(qrData)) {
-        setLoadingMessage("🎭 Checking for surprises...");
-        
-        try {
-          const token = localStorage.getItem('token');
-          const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-          const response = await fetch(`${baseUrl}/api/meme-riddles/${qrData}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            setLoading(false);
-            showMemeModal(data.memeRiddle);
-            return;
-          }
-        } catch (memeError) {
-          // Silently fail meme check and continue to standard riddle check
-          console.log('Meme check failed, trying regular riddle');
-        }
-      }
-
-      // 3. Plain Riddle ID (Standard Flow)
+      // 2. Plain Riddle ID (Standard Flow)
       const plainRiddleId = qrData.trim();
       
       if (!plainRiddleId.includes(':') && plainRiddleId.length === 6) {
-        // Step 2: Check localStorage cache first
+        // Check localStorage cache first
         const cachedRiddle = await getCachedRiddle(plainRiddleId);
         
         let riddleData = null;
@@ -312,6 +274,11 @@ export default function Scan({ onClose }) {
           localStorage.setItem('currentRiddleId', plainRiddleId);
           localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
           
+          if (onScanSuccess) {
+            onScanSuccess(plainRiddleId);
+            return;
+          }
+
           await router.push(
             {
               pathname: '/ViewRiddles',
@@ -344,6 +311,11 @@ export default function Scan({ onClose }) {
           localStorage.setItem('currentRiddleId', plainRiddleId);
           localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
           
+          if (onScanSuccess) {
+            onScanSuccess(plainRiddleId);
+            return;
+          }
+
           await router.push(
             {
               pathname: '/ViewRiddles',
@@ -362,7 +334,6 @@ export default function Scan({ onClose }) {
     } catch (err) {
       console.error('❌ Scan error:', err);
       // Normalize error message to just "Invalid QR Code" for format/decryption issues
-      // as requested, while keeping network errors specific if possible
       let message = err.message;
       if (message.includes("Invalid QR") || message.includes("Decryption")) {
           message = "Invalid QR Code";
@@ -370,19 +341,6 @@ export default function Scan({ onClose }) {
       setError(message);
       setLoading(false);
     }
-  };
-
-  const showMemeModal = (meme) => {
-    setMemeData(meme);
-    stopScanning(); // Stop camera when showing meme
-  };
-
-  const closeMemeModal = () => {
-    setMemeData(null);
-    hasScannedRef.current = false;
-    // Navigate to dashboard instead of restarting scanner
-    router.push('/dashboard');
-    onClose();
   };
 
   const stopScanning = useCallback(() => {
