@@ -223,7 +223,7 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
             }
           }
           // Add/Update the specific riddle in the map
-          unlockedRiddles[riddleId] = riddleData;
+          unlockedRiddles[riddleId] = decryptedText;
           localStorage.setItem('unlocked-riddles', JSON.stringify(unlockedRiddles));
         } catch(err) {
           console.error("Failed to update unlocked riddles storage", err);

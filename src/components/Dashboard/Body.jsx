@@ -71,12 +71,16 @@ const DashboardBody = () => {
             const unlockedMap = JSON.parse(unlockedRiddlesData || "{}");
 
             // Map the unlocked mapping to the array format the UI expects
-            const solvedRiddles = Object.entries(unlockedMap).map(([id, puzzleText]) => ({
-              id,
-              puzzleText,
-              riddleName: "Mystery Clue",
-              isSolved: true
-            }));
+            const solvedRiddles = Object.entries(unlockedMap).map(([id, val]) => {
+              // Handle potential object structure from scan.jsx bug
+              const puzzleText = (typeof val === 'object' && val !== null) ? (val.puzzleText || "") : val;
+              return {
+                id,
+                puzzleText,
+                riddleName: "Mystery Clue",
+                isSolved: true
+              };
+            });
 
             setRiddles(solvedRiddles);
             setProgress({ riddlesSolved: solvedRiddles.length });

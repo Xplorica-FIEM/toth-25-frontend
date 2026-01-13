@@ -41,7 +41,17 @@ const ViewRiddleToUser = ({ riddleId, onClose }) => {
         }
 
         if (foundRiddle) {
-          setRiddle(foundRiddle);
+          // If foundRiddle is a string (from gameData format), normalize it to object
+          if (typeof foundRiddle === 'string') {
+              setRiddle({
+                  id: riddleId,
+                  puzzleText: foundRiddle,
+                  riddleName: "Mystery Clue", 
+                  isSolved: true
+              });
+          } else {
+              setRiddle(foundRiddle);
+          }
         } else {
           setError('Riddle data not found locally. Please try scanning again.');
         }
