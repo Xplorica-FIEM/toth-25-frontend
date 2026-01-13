@@ -41,7 +41,7 @@ export default function Landing() {
             Trails of the Hunt
           </h1>
           <p className="text-xl sm:text-2xl text-amber-300 font-serif italic">
-            Trails of the Hunt - 26
+            2026
           </p>
         </div>
 
