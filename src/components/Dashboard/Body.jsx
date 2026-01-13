@@ -2,17 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from "next/router";
-import Link from "next/link";
-import { 
-  Compass, MapPin, Trophy, LogOut, Shield, 
+import {
+  Compass, MapPin, Trophy, LogOut, Shield,
   Anchor, Map, Key, Scroll, Crown, X
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { getCurrentUser } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
-import { getSessionKey } from "@/utils/sessionKey";
-import { cacheRiddles, isCachePopulated, cleanupOldIndexedDB } from "@/utils/riddleCache";
-import { startBackgroundSync, stopBackgroundSync } from "@/utils/backgroundSync";
 import LoadingScreen from "./LoadingScreen";
 import BackgroundElements from "./BackgroundElements";
 import Navbar from "./Navbar";
@@ -22,12 +18,7 @@ import TimerCountdown from "./TimerCountdown";
 import SolvedRiddles from "./SolvedRiddles";
 
 // EDIT THIS DATE TO CHANGE THE COUNTDOWN
-// Format: YYYY-MM-DDTHH:mm:ss (ISO Format)
-const TARGET_GAME_START = "2026-01-14T14:30:00"; 
-
-const Scan = dynamic(() => import("../scan"), {
-  ssr: false,
-});
+const TARGET_GAME_START = "2026-01-14T14:30:00";
 
 const DashboardBody = () => {
   const router = useRouter();
@@ -37,17 +28,13 @@ const DashboardBody = () => {
   const [riddles, setRiddles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [gameStatus, setGameStatus] = useState("loading"); // loading, not_started, active
-  
-  // Initialize with the hardcoded constant
-  const [startTime, setStartTime] = useState(TARGET_GAME_START);
-  
+  const [gameStatus, setGameStatus] = useState("loading");
+  const [startTime] = useState(TARGET_GAME_START);
+
   const profileMenuRef = useRef(null);
 
   useEffect(() => {
-    fetchDashboardData();
-    // Cache init is now handled in loadGame logic mostly, but we keep sync
-    startBackgroundSync();
+    initializeDashboard();
 
     const handleClickOutside = (event) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -56,24 +43,61 @@ const DashboardBody = () => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      stopBackgroundSync();
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchDashboardData = async () => {
+  const initializeDashboard = async () => {
     const storedUser = getUser();
     if (storedUser) setUser(storedUser);
 
     try {
-      // 1. Get User Details
       const userResponse = await getCurrentUser();
-      if (userResponse.ok) {
-        setUser(userResponse.data.user);
+      if (userResponse.ok) setUser(userResponse.data.user);
+
+      const unlockedRiddlesData = localStorage.getItem("unlocked-riddles");
+      const lastUpdatedLocal = localStorage.getItem("game-last-updated");
+      const token = localStorage.getItem('token');
+
+      // Check if data exists and is fresh
+      if (unlockedRiddlesData && lastUpdatedLocal) {
+        try {
+          const checkResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/game/last-updated`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const checkData = await checkResp.json();
+
+          if (checkData.success && checkData.lastUpdated === lastUpdatedLocal) {
+            const unlockedMap = JSON.parse(unlockedRiddlesData || "{}");
+
+            // Map the unlocked mapping to the array format the UI expects
+            const solvedRiddles = Object.entries(unlockedMap).map(([id, puzzleText]) => ({
+              id,
+              puzzleText,
+              riddleName: "Mystery Clue",
+              isSolved: true
+            }));
+
+            setRiddles(solvedRiddles);
+            setProgress({ riddlesSolved: solvedRiddles.length });
+            setGameStatus("active");
+            setLoading(false);
+            return;
+          }
+        } catch (e) {
+          console.error("Update check failed", e);
+        }
       }
 
-      // 2. Load Game State
+      await fetchDashboardData();
+    } catch (error) {
+      console.error("Init error:", error);
+      setLoading(false);
+    }
+  };
+
+ const fetchDashboardData = async () => {
+    try {
       const token = localStorage.getItem('token');
       const loadResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/game/load`, {
         method: 'GET',
@@ -87,53 +111,53 @@ const DashboardBody = () => {
 
       if (gameData.success === false && gameData.type === "game_not_started") {
         setGameStatus("not_started");
-        // We do NOT update startTime from backend here, we use the hardcoded state
         setLoading(false);
         return;
       }
 
-      if (gameData.success && gameData.riddles && gameData.riddles.length > 0) {
-        // Cache the riddles
-        await cleanupOldIndexedDB();
-        await getSessionKey();
-        await cacheRiddles(gameData.riddles);
+      if (gameData.success && gameData.riddles) {
+        localStorage.setItem("game-last-updated", gameData.lastUpdated || new Date().toISOString());
+
+        const lockedMapping = {};
+        const unlockedMapping = {};
         
-        // Save locked riddles to localStorage
-        const lockedRiddles = {};
-        gameData.riddles.forEach(riddle => {
-          lockedRiddles[riddle.id] = riddle.puzzleText;
+        gameData.riddles.forEach(r => {
+          lockedMapping[r.id] = r.puzzleText;
+          if (r.isSolved || r.solved) {
+            unlockedMapping[r.id] = r.puzzleText;
+          }
         });
-        localStorage.setItem("locked-riddles", JSON.stringify(lockedRiddles));
+
+        localStorage.setItem("locked-riddles", JSON.stringify(lockedMapping));
+        localStorage.setItem("unlocked-riddles", JSON.stringify(unlockedMapping));
         
-        // Calculate progress based on riddles state since we removed the progress endpoint
-        const solvedCount = gameData.riddles.filter(r => r.solved || r.isSolved).length;
-        setProgress({ riddlesSolved: solvedCount });
-        setRiddles(gameData.riddles);
-        
+        const solvedRiddles = Object.entries(unlockedMapping).map(([id, puzzleText]) => ({
+          id,
+          puzzleText,
+          riddleName: "Mystery Clue",
+          isSolved: true
+        }));
+
+        setRiddles(solvedRiddles);
+        setProgress({ riddlesSolved: solvedRiddles.length });
         setGameStatus("active");
-      } else {
-        // Fallback if success but no riddles (maybe game over or empty?)
-        console.warn("Game loaded but no riddles found");
-        setGameStatus("active"); 
       }
 
       setLoading(false);
+      
     } catch (error) {
       console.error("Error:", error);
       if (error.message === "Unauthorized" || error.message === "Authentication required") {
-        logout();
-        router.push("/login");
+        handleLogout();
       }
       setLoading(false);
     }
   };
 
-  const handleLogout = async () => {
-    const { clearCache } = await import('@/utils/riddleCache');
-    const { clearSessionKey } = await import('@/utils/sessionKey');
-    await clearCache();
-    clearSessionKey();
-    stopBackgroundSync();
+  const handleLogout = () => {
+    localStorage.removeItem("locked-riddles");
+    localStorage.removeItem("unlocked-riddles");
+    localStorage.removeItem("game-last-updated");
     logout();
     router.push("/login");
   };
@@ -152,15 +176,15 @@ const DashboardBody = () => {
         @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(251, 191, 36, 0.5); } 50% { box-shadow: 0 0 40px rgba(251, 191, 36, 0.8); } }
         @keyframes treasure-bounce { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
       `}</style>
-      
+
       <BackgroundElements />
-      
-      <Navbar 
-        user={user} 
-        handleLogout={handleLogout} 
-        showProfileMenu={showProfileMenu} 
+
+      <Navbar
+        user={user}
+        handleLogout={handleLogout}
+        showProfileMenu={showProfileMenu}
         setShowProfileMenu={setShowProfileMenu}
-        profileMenuRef={profileMenuRef} 
+        profileMenuRef={profileMenuRef}
       />
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6 flex flex-col">
@@ -180,8 +204,8 @@ const DashboardBody = () => {
               </div>
             </div>
 
-            <StatsGrid 
-              onOpenScanner={() => setShowScanner(true)} 
+            <StatsGrid
+              onOpenScanner={() => setShowScanner(true)}
             />
 
             <SolvedRiddles riddles={riddles} />
