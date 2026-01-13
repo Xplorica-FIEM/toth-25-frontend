@@ -1,5 +1,8 @@
 export async function decryptAES(encryptedHex, secretKey, ivHex) {
-  if (!encryptedHex || !secretKey || !ivHex) {
+  // Use the provided constant IV as fallback if not supplied
+  const ACTIVE_IV = ivHex || "5fd6f5fbf658b265fe69aecb18cde27b";
+
+  if (!encryptedHex || !secretKey) {
     throw new Error("Missing decryption parameters");
   }
 
@@ -13,18 +16,19 @@ export async function decryptAES(encryptedHex, secretKey, ivHex) {
   };
 
   try {
-    const iv = hexToBytes(ivHex);
+    const iv = hexToBytes(ACTIVE_IV);
     const encryptedData = hexToBytes(encryptedHex);
     const textEncoder = new TextEncoder();
     const keyData = textEncoder.encode(secretKey);
 
-    // Hash the secret key to ensure it's 256-bit (32 bytes) for AES-256
-    const keyHash = await window.crypto.subtle.digest('SHA-256', keyData);
+    // To match Backend: Use raw string bytes directly.
+    // Do NOT hash the key with SHA-256. 
+    // Note: secretKey must be exactly 32 characters (bytes) for AES-256.
 
     // Import the key
     const validKey = await window.crypto.subtle.importKey(
       "raw",
-      keyHash,
+      keyData,
       { name: "AES-CBC" },
       false,
       ["decrypt"]
