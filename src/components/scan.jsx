@@ -22,6 +22,7 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
   const [availableCameras, setAvailableCameras] = useState([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
+  const [memeData, setMemeData] = useState(null);
   
   const videoStreamRef = useRef(null);
   const scanIntervalRef = useRef(null);
@@ -385,6 +386,14 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
     } catch (err) {
       console.error("Torch error:", err);
     }
+  };
+
+  const showMemeModal = (meme) => {
+    setMemeData(meme);
+  };
+
+  const closeMemeModal = () => {
+    setMemeData(null);
   };
 
   return (
