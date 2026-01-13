@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { Clock, Compass, Anchor, Ship } from "lucide-react";
 

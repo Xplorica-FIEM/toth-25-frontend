@@ -107,7 +107,7 @@ function AdminDashboardContent() {
 
 export default function AdminDashboard() {
   return (
-    <ProtectedRoute adminOnly>
+    <ProtectedRoute >
       <AdminDashboardContent />
     </ProtectedRoute>
   );

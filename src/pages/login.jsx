@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { Mail, Lock, Compass, Key, Anchor, Map, Shield, LogIn } from 'lucide-react';
+import { Mail, Lock, Compass, Key, Anchor, Map, Shield, LogIn, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const router = useRouter();
@@ -10,6 +10,7 @@ export default function Login() {
     email: '',
     password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -164,14 +165,23 @@ export default function Login() {
                   <Lock className="w-4 h-4" />
                   Secret Code
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 sm:py-4 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
-                  placeholder="Enter your password"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 sm:py-4 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors pr-12"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500/70 hover:text-amber-400 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
                     <span className="inline-block w-1 h-1 bg-red-400 rounded-full" />

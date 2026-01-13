@@ -90,7 +90,7 @@ function AdminUsersContent() {
 
 export default function AdminUsers() {
   return (
-    <ProtectedRoute adminOnly>
+    <ProtectedRoute >
       <AdminUsersContent />
     </ProtectedRoute>
   );

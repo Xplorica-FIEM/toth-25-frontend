@@ -23,7 +23,7 @@ import SolvedRiddles from "./SolvedRiddles";
 
 // EDIT THIS DATE TO CHANGE THE COUNTDOWN
 // Format: YYYY-MM-DDTHH:mm:ss (ISO Format)
-const TARGET_GAME_START = "2026-02-15T10:00:00"; 
+const TARGET_GAME_START = "2026-01-14T14:30:00"; 
 
 const Scan = dynamic(() => import("../scan"), {
   ssr: false,

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { UserPlus, Mail, Phone, User, Hash, Lock, Map, Anchor, Ship, Scroll, Compass } from 'lucide-react';
+import { UserPlus, Mail, Phone, User, Hash, Lock, Map, Anchor, Ship, Scroll, Compass, Eye, EyeOff } from 'lucide-react';
 import { DEPARTMENTS } from '../constants/departments';
 
 export default function Register() {
@@ -16,6 +16,8 @@ export default function Register() {
     password: '',
     confirmPassword: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -250,14 +252,23 @@ export default function Register() {
                   <Lock className="w-4 h-4" />
                   Secret Code
                 </label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
-                  placeholder="Min. 6 characters"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors pr-12"
+                    placeholder="Min. 6 characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500/70 hover:text-amber-400 focus:outline-none"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="text-red-400 text-xs mt-1">{errors.password}</p>
                 )}
@@ -269,14 +280,23 @@ export default function Register() {
                   <Lock className="w-4 h-4" />
                   Confirm Secret Code
                 </label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors"
-                  placeholder="Repeat your password"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full px-4 py-3 bg-stone-900/50 border-2 border-amber-700/30 rounded-xl text-amber-100 text-base placeholder-amber-600/40 focus:border-amber-500 focus:outline-none transition-colors pr-12"
+                    placeholder="Repeat your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-amber-500/70 hover:text-amber-400 focus:outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
                 {errors.confirmPassword && (
                   <p className="text-red-400 text-xs mt-1">{errors.confirmPassword}</p>
                 )}

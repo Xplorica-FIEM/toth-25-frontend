@@ -273,7 +273,7 @@ function EditRiddleContent() {
 
 export default function EditRiddle() {
   return (
-    <ProtectedRoute adminOnly>
+    <ProtectedRoute >
       <EditRiddleContent />
     </ProtectedRoute>
   );

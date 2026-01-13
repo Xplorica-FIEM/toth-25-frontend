@@ -9,96 +9,41 @@ const ViewRiddles = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Wait for the router to be ready
     if (!router.isReady) return;
 
-    // Get the riddle ID from query or cache
-    let riddleId = router.query.id;
-    
-    // If no ID in URL, check localStorage cache
+    const riddleId = router.query.id;
     if (!riddleId) {
-      riddleId = localStorage.getItem('currentRiddleId');
-      if (riddleId) {
-        // Update URL with cached ID (without reloading)
-        router.replace({
-          pathname: '/ViewRiddles',
-          query: { id: riddleId }
-        }, undefined, { shallow: true });
-      } else {
-        router.push('/dashboard');
-        return;
-      }
-    }
-
-    // Prevent refetching if we already have the same riddle
-    if (riddle && riddle.id === riddleId) {
+      router.push('/dashboard');
       return;
     }
 
-    // Try to load from cache FIRST (instant display)
-    const cachedData = localStorage.getItem('currentRiddleData');
-    if (cachedData) {
-      try {
-        const parsedData = JSON.parse(cachedData);
-        if (parsedData.id === riddleId) {
-          console.log('✅ Using cached riddle:', parsedData.riddleName, 'Text length:', parsedData.puzzleText?.length);
-          // Use cached data immediately - INSTANT LOAD
-          setRiddle(parsedData);
-          setLoading(false);
-          return; // No API call needed!
-        }
-      } catch (e) {
-        console.log('Cache parse error, fetching from API', e);
-      }
-    }
-
-    // Fallback: Fetch riddle data from the API (only if cache miss)
     const fetchRiddle = async () => {
       try {
-        // Show minimal loading state
         setLoading(true);
         setError('');
-        
         const token = localStorage.getItem('token');
-        
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/riddle/${riddleId}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/riddles/${riddleId}`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
-
         const data = await response.json();
-
         if (response.ok && data.success) {
-          // Set riddle data
           setRiddle(data.riddle);
-          setLoading(false);
-          
-          // Update cache
-          localStorage.setItem('currentRiddleId', data.riddle.id);
-          localStorage.setItem('currentRiddleData', JSON.stringify(data.riddle));
         } else {
           setError(data.error || 'Failed to retrieve riddle data.');
-          setLoading(false);
-          // Clear invalid cache
-          localStorage.removeItem('currentRiddleId');
-          localStorage.removeItem('currentRiddleData');
         }
       } catch (err) {
         setError('Riddle not found or access denied.');
+      } finally {
         setLoading(false);
-        // Clear invalid cache
-        localStorage.removeItem('currentRiddleId');
-        localStorage.removeItem('currentRiddleData');
       }
     };
 
     fetchRiddle();
-
   }, [router.isReady, router.query.id]);
 
-  // Loading State
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-linear-to-br from-stone-900 via-amber-900/20 to-stone-900">
@@ -111,7 +56,6 @@ const ViewRiddles = () => {
     );
   }
 
-  // Error State
   if (error) {
     return (
       <div className="flex flex-col justify-center items-center h-screen bg-linear-to-br from-stone-900 via-red-900/20 to-stone-900 text-red-400 font-mono">
@@ -130,7 +74,6 @@ const ViewRiddles = () => {
     );
   }
 
-  // Render the Riddle
   if (!riddle) {
     return null;
   }

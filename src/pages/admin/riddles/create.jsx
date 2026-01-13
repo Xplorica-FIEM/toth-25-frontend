@@ -154,7 +154,7 @@ function CreateRiddleContent() {
 
 export default function CreateRiddle() {
   return (
-    <ProtectedRoute adminOnly>
+    <ProtectedRoute>
       <CreateRiddleContent />
     </ProtectedRoute>
   );

@@ -21,7 +21,7 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     }
 
     // Check admin access if required
-    if (adminOnly && !isAdmin()) {
+    if (adminOnly && isAdmin()) {
       router.replace('/dashboard');
       return;
     }
