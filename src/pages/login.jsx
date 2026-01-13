@@ -1,4 +1,4 @@
-// pages/login.jsx - Mobile-First Treasure Hunt Login
+// pages/login.jsx - Mobile-First Trails of the Hunt Login
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';

@@ -7,7 +7,7 @@ import {
   Anchor, Map, Key, Scroll, Crown, X
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { getCurrentUser } from "@/utils/api";
+import { getCurrentUser, getProgress, getScannedRiddles } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
 import LoadingScreen from "./LoadingScreen";
 import BackgroundElements from "./BackgroundElements";
@@ -55,37 +55,27 @@ const DashboardBody = () => {
       if (userResponse.ok) setUser(userResponse.data.user);
 
       const unlockedRiddlesData = localStorage.getItem("unlocked-riddles");
-      const lastUpdatedLocal = localStorage.getItem("game-last-updated");
-      const token = localStorage.getItem('token');
-
-      // Check if data exists and is fresh
-      if (unlockedRiddlesData && lastUpdatedLocal) {
+      if (unlockedRiddlesData) {
         try {
-          const checkResp = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/game/last-updated`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const checkData = await checkResp.json();
-
-          if (checkData.success && checkData.lastUpdated === lastUpdatedLocal) {
-            const unlockedMap = JSON.parse(unlockedRiddlesData || "{}");
-
-            // Map the unlocked mapping to the array format the UI expects
-            const solvedRiddles = Object.entries(unlockedMap).map(([id, puzzleText]) => ({
+          const unlockedMap = JSON.parse(unlockedRiddlesData || "{}");
+          const cachedRiddles = Object.entries(unlockedMap).map(([id, value]) => {
+            const info = typeof value === "string" ? { puzzleText: value } : value || {};
+            return {
               id,
-              puzzleText,
-              riddleName: "Mystery Clue",
-              isSolved: true
-            }));
+              puzzleText: info.puzzleText || "",
+              riddleName: info.riddleName || "Mystery Clue",
+              scannedAt: info.scannedAt || null,
+              isSolved: true,
+            };
+          });
 
-            setRiddles(solvedRiddles);
-            setProgress({ riddlesSolved: solvedRiddles.length });
+          if (cachedRiddles.length > 0) {
+            setRiddles(cachedRiddles);
+            setProgress((prev) => prev || { riddlesSolved: cachedRiddles.length });
             setGameStatus("active");
-            setLoading(false);
-            return;
           }
-        } catch (e) {
-          console.error("Update check failed", e);
+        } catch (parseError) {
+          console.error("Failed to restore cached riddles:", parseError);
         }
       }
 
@@ -96,57 +86,50 @@ const DashboardBody = () => {
     }
   };
 
- const fetchDashboardData = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const loadResponse = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/game/load`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const [progressResponse, scannedResponse] = await Promise.all([
+        getProgress(),
+        getScannedRiddles(),
+      ]);
 
-      const gameData = await loadResponse.json();
-
-      if (gameData.success === false && gameData.type === "game_not_started") {
-        setGameStatus("not_started");
-        setLoading(false);
-        return;
+      if (progressResponse.ok && progressResponse.data?.progress) {
+        setProgress(progressResponse.data.progress);
       }
 
-      if (gameData.success && gameData.riddles) {
-        localStorage.setItem("game-last-updated", gameData.lastUpdated || new Date().toISOString());
+      let status = progressResponse.data?.progress?.totalRiddles > 0 ? "active" : "not_started";
 
-        const lockedMapping = {};
+      if (scannedResponse.ok && Array.isArray(scannedResponse.data?.riddles)) {
         const unlockedMapping = {};
-        
-        gameData.riddles.forEach(r => {
-          lockedMapping[r.id] = r.puzzleText;
-          if (r.isSolved || r.solved) {
-            unlockedMapping[r.id] = r.puzzleText;
-          }
-        });
+        const solvedRiddles = scannedResponse.data.riddles
+          .map(({ riddle, scannedAt }) => {
+            if (!riddle) return null;
+            const entry = {
+              id: riddle.id,
+              puzzleText: riddle.puzzleText,
+              riddleName: riddle.riddleName || "Mystery Clue",
+              isSolved: true,
+              scannedAt,
+            };
+            unlockedMapping[riddle.id] = entry;
+            return entry;
+          })
+          .filter(Boolean);
 
-        localStorage.setItem("locked-riddles", JSON.stringify(lockedMapping));
         localStorage.setItem("unlocked-riddles", JSON.stringify(unlockedMapping));
-        
-        const solvedRiddles = Object.entries(unlockedMapping).map(([id, puzzleText]) => ({
-          id,
-          puzzleText,
-          riddleName: "Mystery Clue",
-          isSolved: true
-        }));
-
         setRiddles(solvedRiddles);
-        setProgress({ riddlesSolved: solvedRiddles.length });
-        setGameStatus("active");
+        if (solvedRiddles.length > 0) {
+          status = "active";
+        }
+      } else {
+        setRiddles([]);
       }
 
+      setGameStatus(status);
       setLoading(false);
       
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error fetching dashboard data:", error);
       if (error.message === "Unauthorized" || error.message === "Authentication required") {
         handleLogout();
       }

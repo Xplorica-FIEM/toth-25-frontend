@@ -262,7 +262,7 @@ export default function RegisterPage() {
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
-                🏴‍☠️ Join the Treasure Hunt 🏴‍☠️
+                🏴‍☠️ Join the Trails of the Hunt 🏴‍☠️
               </span>
             )}
           </button>

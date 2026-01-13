@@ -1,4 +1,4 @@
-// pages/register.jsx - Mobile-First Treasure Hunt Registration
+// pages/register.jsx - Mobile-First Trails of the Hunt Registration
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -322,7 +322,7 @@ export default function Register() {
                     Registering...
                   </span>
                 ) : (
-                  '🏴‍☠️ Join the Treasure Hunt'
+                  '🏴‍☠️ Join the Trails of the Hunt'
                 )}
               </button>
             </form>

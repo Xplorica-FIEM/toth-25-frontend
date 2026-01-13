@@ -38,7 +38,7 @@ export default function Landing() {
         {/* Hero */}
         <div className="text-center space-y-3">
           <h1 className="text-4xl sm:text-5xl font-bold text-amber-100 tracking-tight">
-            Treasure Hunt
+            Trails of the Hunt
           </h1>
           <p className="text-xl sm:text-2xl text-amber-300 font-serif italic">
             TOTH '25

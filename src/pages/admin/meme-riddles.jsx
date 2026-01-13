@@ -199,7 +199,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
               🎭 Meme Riddles Management
             </h1>
             <p className="text-amber-200/70 text-sm mt-1">
-              Create fun surprise memes for treasure hunters
+              Create fun surprise memes for Trails of the Hunters
             </p>
           </div>
           <button
@@ -349,7 +349,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
           <div className="bg-purple-900/40 border border-purple-700/30 rounded-2xl p-12 text-center">
             <ImagePlus className="w-16 h-16 text-purple-400/50 mx-auto mb-4" />
             <h3 className="text-purple-100 text-xl font-bold mb-2">No Meme Riddles Yet</h3>
-            <p className="text-purple-300/70 mb-4">Create your first meme riddle to surprise your treasure hunters!</p>
+            <p className="text-purple-300/70 mb-4">Create your first meme riddle to surprise your Trails of the Hunters!</p>
             <button
               onClick={() => setShowForm(true)}
               className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg"

@@ -1,6 +1,6 @@
-# 🏆 Treasure Hunt - TOTH 25 Frontend
+# 🏆 Trails of the Hunt - 26 Frontend
 
-Modern Next.js frontend for the college treasure hunt game with QR scanning, real-time leaderboards, and admin management.
+Modern Next.js frontend for the college Trails of the Hunt game with QR scanning, real-time leaderboards, and admin management.
 
 **🌐 Live App:** https://toth-25-frontend.vercel.app
 
@@ -202,7 +202,7 @@ NEXT_PUBLIC_BACKEND_URL=https://toth-25-backend.vercel.app
 **Features:**
 - Supports both regular riddles and meme riddles (6-char alphanumeric)
 - Displays riddle name, puzzle text, and order number
-- Shows meme riddles in treasure hunt themed modal
+- Shows meme riddles in Trails of the Hunt themed modal
 - Parses riddle ID from QR codes
 - Displays riddle name, puzzle text, and order number
 - Shows scan timestamp
@@ -565,7 +565,7 @@ bob.smith@college.edu / password123
 
 ## 📝 License
 
-This project is part of TOTH 25 - College Treasure Hunt Event.
+This project is part of TOTH 26 - College Trails of the Hunt Event.
 
 ---
 
@@ -587,4 +587,4 @@ For issues or questions:
 
 ---
 
-**Built with ❤️ for TOTH 25 College Treasure Hunt**
+**Built with ❤️ for TOTH 26 College Trails of the Hunt**

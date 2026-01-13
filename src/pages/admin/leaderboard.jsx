@@ -47,8 +47,8 @@ function AdminLeaderboardContent() {
           >
             <option value="">All Departments</option>
             {DEPARTMENTS.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
+              <option key={dept.code} value={dept.code}>
+                {dept.name}
               </option>
             ))}
           </select>
@@ -76,7 +76,15 @@ function AdminLeaderboardContent() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-800">
-              {leaderboard?.map((player, index) => (
+              {leaderboard.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-amber-200/60">
+                    <p className="text-lg mb-2">No leaderboard entries yet</p>
+                    <p className="text-sm">Players will appear here once they start scanning riddles</p>
+                  </td>
+                </tr>
+              ) : (
+                leaderboard.map((player, index) => (
                 <tr
                   key={player.userId}
                   className={`hover:bg-stone-800/50 ${
@@ -114,7 +122,8 @@ function AdminLeaderboardContent() {
                     {player.completionTimeFormatted || "N/A"}
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
               </tbody>
             </table>
           </div>

@@ -156,6 +156,13 @@ export const getMyScans = async () => {
 };
 
 /**
+ * Get all scanned riddles (unique)
+ */
+export const getScannedRiddles = async () => {
+  return fetchAPI('/api/game/scanned-riddles');
+};
+
+/**
  * Get riddles metadata for caching (non-sensitive data only)
  */
 export const getRiddlesMetadata = async () => {
@@ -306,6 +313,7 @@ export default {
   // Game
   getProgress,
   getMyScans,
+  getScannedRiddles,
   completeGame,
   syncOfflineScans,
   

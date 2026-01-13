@@ -77,7 +77,7 @@ export default function VerifyOtp() {
     setPrefetchMessage("🗺️ Gathering ancient maps...");
     
     try {
-      // Show treasure hunt animations
+      // Show Trails of the Hunt animations
       setPrefetchMessage("🏴‍☠️ Decoding treasure clues...");
       await new Promise(resolve => setTimeout(resolve, 800));
       

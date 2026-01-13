@@ -605,7 +605,7 @@ export default function Scan({ onClose }) {
         </div>
       </div>
 
-      {/* Meme Modal - Treasure Hunt Themed */}
+      {/* Meme Modal - Trails of the Hunt Themed */}
       {memeData && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/95 p-4">
           <div className="max-w-2xl w-full bg-linear-to-br from-amber-50/95 via-yellow-50/95 to-amber-100/95 backdrop-blur-xl rounded-3xl border-4 border-amber-800/80 shadow-2xl overflow-hidden relative"
