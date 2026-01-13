@@ -1,7 +1,9 @@
-import React from 'react';
-import { Scroll, CheckCircle2, Search } from "lucide-react";
+import React, { useState } from 'react';
+import { Scroll, Search } from "lucide-react";
+import ViewRiddleToUser from './ViewRiddle';
 
 const SolvedRiddles = ({ riddles }) => {
+  const [selectedRiddleId, setSelectedRiddleId] = useState(null);
   const solvedRiddles = riddles.filter(r => r.isSolved);
 
   return (
@@ -24,7 +26,8 @@ const SolvedRiddles = ({ riddles }) => {
           {solvedRiddles.map((riddle) => (
             <div 
               key={riddle.id}
-              className="group bg-linear-to-br from-amber-900/20 to-stone-900/40 border border-amber-700/20 rounded-xl p-5 hover:border-amber-600/50 transition-all duration-300 relative overflow-hidden"
+              onClick={() => setSelectedRiddleId(riddle.id)}
+              className="group cursor-pointer bg-linear-to-br from-amber-900/20 to-stone-900/40 border border-amber-700/20 rounded-xl p-5 hover:border-amber-600/50 transition-all duration-300 relative overflow-hidden"
             >
               {/* Background Decoration */}
               <div className="absolute -top-4 -right-4 w-16 h-16 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-all"></div>
@@ -33,24 +36,14 @@ const SolvedRiddles = ({ riddles }) => {
                 <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 group-hover:border-amber-500/40 transition-colors">
                   <Scroll className="w-5 h-5 text-amber-500" />
                 </div>
-                <div className="flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Unlocked</span>
-                </div>
               </div>
               
               <div className="relative z-10">
-                <h4 className="text-amber-100 font-bold text-lg mb-1 truncate group-hover:text-amber-50 transition-colors">
-                  {riddle.riddleName || `Riddle #${riddle.id}`}
-                </h4>
-                <p className="text-amber-200/50 text-sm line-clamp-2 italic mb-4 leading-relaxed h-[40px]">
-                  "{riddle.puzzleText}"
+                <p className="text-amber-200/50 text-sm italic mb-4 leading-relaxed">
+                  "{riddle.puzzleText.length > 60 ? riddle.puzzleText.substring(0, 60) + '...' : riddle.puzzleText}"
                 </p>
                 
-                <div className="flex items-center justify-between pt-4 border-t border-amber-900/30">
-                  <div className="text-[10px] text-amber-600 font-black uppercase tracking-widest">
-                    ID: {riddle.id}
-                  </div>
+                <div className="flex items-center justify-end pt-4 border-t border-amber-900/30">
                   <div className="text-[10px] text-amber-500/40 font-medium">
                     {riddle.scannedAt ? new Date(riddle.scannedAt).toLocaleDateString() : 'Found'}
                   </div>
@@ -60,8 +53,16 @@ const SolvedRiddles = ({ riddles }) => {
           ))}
         </div>
       )}
+
+      {selectedRiddleId && (
+        <ViewRiddleToUser 
+          riddleId={selectedRiddleId} 
+          onClose={() => setSelectedRiddleId(null)} 
+        />
+      )}
     </div>
   );
 };
 
 export default SolvedRiddles;
+    
