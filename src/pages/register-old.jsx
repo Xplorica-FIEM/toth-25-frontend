@@ -219,8 +219,8 @@ export default function RegisterPage() {
             >
               <option value="" disabled className="bg-stone-900">🏛️ Select Your Guild</option>
               {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept} className="bg-stone-900">
-                  {dept}
+                <option key={dept.code} value={dept.code} className="bg-stone-900">
+                  {dept.name}
                 </option>
               ))}
             </select>
