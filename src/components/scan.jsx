@@ -6,7 +6,7 @@ import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone,
 import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
 import { triggerSync } from "@/utils/backgroundSync";
 import { decryptAES } from "@/utils/crypto";
-import { getLockedRiddle, unlockRiddle } from "@/utils/riddleStorage";
+import { getLockedRiddle, getUnlockedRiddle, unlockRiddle } from "@/utils/riddleStorage";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
@@ -233,7 +233,51 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
           throw new Error("Decryption configuration missing");
         }
 
-        // 2. Fetch from distributed localStorage (locked riddles)
+        // 2. First check if riddle is already unlocked (re-scan case)
+        const unlockedData = getUnlockedRiddle(riddleId);
+        
+        if (unlockedData && unlockedData.puzzleText && unlockedData.isSolved) {
+          // Already unlocked - use cached decrypted data
+          console.log('✅ Riddle already unlocked, using cached data:', riddleId);
+          
+          const riddleData = {
+            id: riddleId,
+            puzzleText: unlockedData.puzzleText,
+            isUnlocked: true
+          };
+
+          // Store and Redirect
+          localStorage.setItem('currentRiddleId', riddleId);
+          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+          
+          // Still register the scan to server (for tracking purposes)
+          const scannedAtIso = new Date().toISOString();
+          (async () => {
+            try {
+              await persistScanToServer(riddleId, scannedAtIso, { requireRiddleData: false });
+              console.log('✅ Re-scan registered for riddle:', riddleId);
+            } catch (err) {
+              console.warn('⚠️ Re-scan registration failed:', err.message);
+            }
+          })();
+          
+          if (onScanSuccess) {
+            onScanSuccess(riddleId);
+            return;
+          }
+
+          await router.push(
+            {
+              pathname: '/ViewRiddles',
+              query: { id: riddleId }
+            },
+            '/ViewRiddles'
+          );
+          onClose();
+          return;
+        }
+
+        // 3. Fetch from distributed localStorage (locked riddles)
         const lockedData = getLockedRiddle(riddleId);
 
         if (!lockedData) {

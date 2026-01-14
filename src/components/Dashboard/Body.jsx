@@ -27,7 +27,7 @@ import TimerCountdown from "./TimerCountdown";
 import SolvedRiddles from "./SolvedRiddles";
 
 // EDIT THIS DATE TO CHANGE THE COUNTDOWN
-const TARGET_GAME_START = "2026-01-14T14:45:00";
+const TARGET_GAME_START = "2026-01-14T14:50:00";
 
 const DashboardBody = () => {
   const router = useRouter();
@@ -137,9 +137,30 @@ const DashboardBody = () => {
               const newUnlocked = {};
               const newLocked = {};
               
+              // Get existing unlocked riddles to preserve decrypted puzzleText
+              const existingUnlockedIndex = getUnlockedRiddlesIndex();
+              
               allRiddles.forEach(r => {
                   if (r.isSolved) {
-                      newUnlocked[r.id] = r;
+                      // Check if we already have this riddle unlocked locally with decrypted text
+                      if (existingUnlockedIndex.includes(r.id)) {
+                          const existingData = getAllUnlockedRiddles().find(ur => ur.id === r.id);
+                          if (existingData && existingData.puzzleText) {
+                              // Preserve the locally decrypted puzzleText, update other fields
+                              newUnlocked[r.id] = {
+                                  ...r,
+                                  puzzleText: existingData.puzzleText, // Keep decrypted text
+                                  isSolved: true
+                              };
+                          } else {
+                              // No existing decrypted data, use server data (encrypted)
+                              newUnlocked[r.id] = r;
+                          }
+                      } else {
+                          // New solved riddle from server (maybe solved on another device)
+                          // Store as-is (will be encrypted, needs re-scan to decrypt)
+                          newUnlocked[r.id] = r;
+                      }
                   } else {
                       newLocked[r.id] = r;
                   }
