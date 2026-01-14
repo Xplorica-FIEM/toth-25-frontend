@@ -23,10 +23,19 @@ function CreateRiddleContent() {
   };
 
   const addComponent = (type) => {
+    if (type === "image") {
+      const imageCount = form.components.filter((component) => component.type === "image").length;
+      if (imageCount >= 10) {
+        setError("You can only add up to 10 images per riddle");
+        return;
+      }
+    }
+
     setForm({
       ...form,
       components: [...form.components, { type, data: "" }],
     });
+    setError("");
   };
 
   const removeComponent = (index) => {
@@ -85,6 +94,12 @@ function CreateRiddleContent() {
     const hasEmpty = form.components.some(c => !c.data);
     if (hasEmpty) {
       setError("All components must have content or an image");
+      return;
+    }
+
+    const imageCount = form.components.filter((component) => component.type === "image").length;
+    if (imageCount > 10) {
+      setError("You can only add up to 10 images per riddle");
       return;
     }
 

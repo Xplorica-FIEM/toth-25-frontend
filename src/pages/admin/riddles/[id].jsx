@@ -77,10 +77,21 @@ function EditRiddleContent() {
   };
 
   const addComponent = (type) => {
+    if (type === "image") {
+      const imageCount = formData.components.filter((component) => component.type === "image").length;
+      if (imageCount >= 10) {
+        setErrorMessage("You can only add up to 10 images per riddle");
+        setShowErrorModal(true);
+        return;
+      }
+    }
+
     setFormData({
       ...formData,
       components: [...formData.components, { type, data: "" }],
     });
+    setShowErrorModal(false);
+    setErrorMessage("");
   };
 
   const removeComponent = (index) => {
@@ -140,6 +151,13 @@ function EditRiddleContent() {
     const hasEmpty = formData.components.some(c => !c.data);
     if (hasEmpty) {
       setErrorMessage("All components must have content or an image");
+      setShowErrorModal(true);
+      return;
+    }
+
+    const imageCount = formData.components.filter((component) => component.type === "image").length;
+    if (imageCount > 10) {
+      setErrorMessage("You can only add up to 10 images per riddle");
       setShowErrorModal(true);
       return;
     }
