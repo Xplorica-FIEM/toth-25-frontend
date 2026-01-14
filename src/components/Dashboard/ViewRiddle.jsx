@@ -103,7 +103,7 @@ const ViewRiddleToUser = ({ riddle: riddleProp, riddleId, onClose }) => {
           <div className="w-full">
              <RiddleTemplate 
                riddleContent={riddle.puzzleText}
-               title={riddle.riddleName}
+               title=""
                backgroundImage={getBackgroundImage(riddle.id)}
                isAuthenticated={true}
                riddleId={riddle.id}
