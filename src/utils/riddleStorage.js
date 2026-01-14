@@ -1,12 +1,15 @@
 /**
  * Riddle Storage Utility
  * 
- * Stores riddle data in separate localStorage keys to avoid quota limits.
+ * Uses a hybrid approach to handle large riddle data:
+ * - Indexes (riddle IDs) are stored in localStorage
+ * - Full riddle data is kept in memory during the session
+ * - Unlocked riddles store minimal data in localStorage for persistence
  * 
  * Storage structure:
  * - `locked-riddles-index`: Array of locked riddle IDs
  * - `unlocked-riddles-index`: Array of unlocked riddle IDs  
- * - `riddle-data-{id}`: Individual riddle data for each riddle
+ * - `riddle-unlock-{id}`: Minimal unlocked riddle data (id, puzzleText summary, scannedAt)
  */
 
 const LOCKED_INDEX_KEY = 'locked-riddles-index';
@@ -107,28 +110,58 @@ export function setUnlockedRiddlesIndex(ids) {
 
 /**
  * Store all locked riddles (from server response)
+ * Continues even if individual riddles fail to store (quota issues)
  * @param {Object} riddlesMap - Object with riddle IDs as keys and riddle data as values
  */
 export function storeLockedRiddles(riddlesMap) {
   const ids = [];
+  let storedCount = 0;
+  let failedCount = 0;
+  
   for (const [id, data] of Object.entries(riddlesMap)) {
-    storeRiddleData(id, { ...data, isLocked: true });
-    ids.push(id);
+    const success = storeRiddleData(id, { ...data, isLocked: true });
+    if (success) {
+      storedCount++;
+    } else {
+      failedCount++;
+      console.warn(`⚠️ Could not store locked riddle ${id} - will need to reload from server`);
+    }
+    ids.push(id); // Still track the ID even if storage failed
   }
+  
   setLockedRiddlesIndex(ids);
+  
+  if (failedCount > 0) {
+    console.warn(`⚠️ Stored ${storedCount}/${ids.length} locked riddles. ${failedCount} failed due to storage quota.`);
+  }
 }
 
 /**
  * Store all unlocked riddles (from server response)
+ * Continues even if individual riddles fail to store (quota issues)
  * @param {Object} riddlesMap - Object with riddle IDs as keys and riddle data as values
  */
 export function storeUnlockedRiddles(riddlesMap) {
   const ids = [];
+  let storedCount = 0;
+  let failedCount = 0;
+  
   for (const [id, data] of Object.entries(riddlesMap)) {
-    storeRiddleData(id, { ...data, isLocked: false, isSolved: true });
+    const success = storeRiddleData(id, { ...data, isLocked: false, isSolved: true });
+    if (success) {
+      storedCount++;
+    } else {
+      failedCount++;
+      console.warn(`⚠️ Could not store unlocked riddle ${id}`);
+    }
     ids.push(id);
   }
+  
   setUnlockedRiddlesIndex(ids);
+  
+  if (failedCount > 0) {
+    console.warn(`⚠️ Stored ${storedCount}/${ids.length} unlocked riddles. ${failedCount} failed due to storage quota.`);
+  }
 }
 
 /**
