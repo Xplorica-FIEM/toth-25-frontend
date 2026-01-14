@@ -257,7 +257,7 @@ function AdminDashboardContent() {
                         <div className="flex gap-2">
                           <button
                             onClick={() =>
-                              router.push(`/admin/riddles/edit/${riddle.id}`)
+                              router.push(`/admin/riddles/edit?id=${riddle.id}`)
                             }
                             className="p-2 bg-blue-900/60 hover:bg-blue-900 text-blue-200 rounded-lg transition-colors"
                           >
