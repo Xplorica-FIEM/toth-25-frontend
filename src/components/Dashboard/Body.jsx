@@ -137,32 +137,37 @@ const DashboardBody = () => {
               const newUnlocked = {};
               const newLocked = {};
               
-              // Get existing unlocked riddles to preserve decrypted puzzleText
-              const existingUnlockedIndex = getUnlockedRiddlesIndex();
+              // Get ALL existing unlocked riddles from localStorage FIRST
+              // This preserves riddles that are unlocked locally but not yet synced to server
+              const existingUnlocked = getAllUnlockedRiddles();
+              existingUnlocked.forEach(existingRiddle => {
+                  if (existingRiddle && existingRiddle.id) {
+                      // Start with existing local data (has decrypted puzzleText)
+                      newUnlocked[existingRiddle.id] = existingRiddle;
+                  }
+              });
               
+              // Now process server riddles
               allRiddles.forEach(r => {
                   if (r.isSolved) {
-                      // Check if we already have this riddle unlocked locally with decrypted text
-                      if (existingUnlockedIndex.includes(r.id)) {
-                          const existingData = getAllUnlockedRiddles().find(ur => ur.id === r.id);
-                          if (existingData && existingData.puzzleText) {
-                              // Preserve the locally decrypted puzzleText, update other fields
-                              newUnlocked[r.id] = {
-                                  ...r,
-                                  puzzleText: existingData.puzzleText, // Keep decrypted text
-                                  isSolved: true
-                              };
-                          } else {
-                              // No existing decrypted data, use server data (encrypted)
-                              newUnlocked[r.id] = r;
-                          }
+                      // If we already have this riddle locally with decrypted text, preserve it
+                      if (newUnlocked[r.id] && newUnlocked[r.id].puzzleText) {
+                          // Merge: keep local decrypted puzzleText, update metadata from server
+                          newUnlocked[r.id] = {
+                              ...newUnlocked[r.id],
+                              ...r,
+                              puzzleText: newUnlocked[r.id].puzzleText, // Keep decrypted text
+                              isSolved: true
+                          };
                       } else {
-                          // New solved riddle from server (maybe solved on another device)
-                          // Store as-is (will be encrypted, needs re-scan to decrypt)
+                          // No local data - use server data (may be encrypted if solved elsewhere)
                           newUnlocked[r.id] = r;
                       }
                   } else {
-                      newLocked[r.id] = r;
+                      // Only add to locked if NOT already unlocked locally
+                      if (!newUnlocked[r.id]) {
+                          newLocked[r.id] = r;
+                      }
                   }
               });
               

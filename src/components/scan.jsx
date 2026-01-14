@@ -164,20 +164,47 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
       readerRef.current.hints = hints;
       readerRef.current.timeBetweenDecodingAttempts = 200; // Throttle to 5 scans/sec
       
-      await readerRef.current.decodeFromVideoDevice(
-        selectedCamera.deviceId,
-        videoRef.current,
-        (result, err) => {
-          if (result && !hasScannedRef.current) {
-            hasScannedRef.current = true;
-            const text = result.getText();
-            setIsScanning(false);
-            stopScanning();
-            handleQRScan(text);
+      // On mobile, use facingMode constraint to reliably select back camera on first scan
+      // This is more reliable than label detection as labels may be empty before permission
+      if (isMobileDevice && currentCameraIndex === 0) {
+        const constraints = {
+          video: {
+            facingMode: { ideal: 'environment' }, // Back camera
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
           }
-          // Silently ignore NotFoundException to reduce console spam
-        }
-      );
+        };
+        
+        await readerRef.current.decodeFromConstraints(
+          constraints,
+          videoRef.current,
+          (result, err) => {
+            if (result && !hasScannedRef.current) {
+              hasScannedRef.current = true;
+              const text = result.getText();
+              setIsScanning(false);
+              stopScanning();
+              handleQRScan(text);
+            }
+            // Silently ignore NotFoundException to reduce console spam
+          }
+        );
+      } else {
+        await readerRef.current.decodeFromVideoDevice(
+          selectedCamera.deviceId,
+          videoRef.current,
+          (result, err) => {
+            if (result && !hasScannedRef.current) {
+              hasScannedRef.current = true;
+              const text = result.getText();
+              setIsScanning(false);
+              stopScanning();
+              handleQRScan(text);
+            }
+            // Silently ignore NotFoundException to reduce console spam
+          }
+        );
+      }
 
       // Store video stream for torch control
       if (videoRef.current && videoRef.current.srcObject) {
