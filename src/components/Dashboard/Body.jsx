@@ -61,14 +61,20 @@ const DashboardBody = () => {
 
     try {
       const userResponse = await getCurrentUser();
-      if (userResponse.ok) setUser(userResponse.data.user);
+      if (userResponse.ok) {
+        setUser(userResponse.data.user);
+      } else if (userResponse.status === 401) {
+        // Token expired or invalid
+        handleLogout();
+        return;
+      }
+      // If network error, continue with stored user
 
       await checkAndLoadGame(false);
     } catch (error) {
       console.error("Init error:", error);
-      if (error.message === "Unauthorized" || error.message === "Authentication required") {
-        handleLogout();
-      }
+      // Don't re-throw - just log and continue with whatever data we have
+    } finally {
       setLoading(false);
     }
   };
@@ -99,11 +105,16 @@ const DashboardBody = () => {
             const localLastUpdated = localStorage.getItem("game-last-updated");
             
             const updateRes = await getLastGameUpdate();
+            // Only proceed if we got a valid response (not network error)
             if (updateRes.ok) {
                 const serverLastUpdated = updateRes.data.lastUpdated;
                 if (serverLastUpdated !== localLastUpdated) {
                     shouldFetch = true;
                 }
+            } else if (updateRes.networkError) {
+                // Network error - use local data, don't try to fetch more
+                console.warn('⚠️ Network unavailable, using cached data');
+                shouldFetch = false;
             }
         }
       }
@@ -112,7 +123,15 @@ const DashboardBody = () => {
       if (shouldFetch) {
           const gameRes = await loadGame();
           
-          if (gameRes.ok) {
+          // Handle network errors gracefully
+          if (gameRes.networkError) {
+              console.warn('⚠️ Could not load game from server, using local data');
+              // If we have no local data at all, show not_started as fallback
+              if (unlockedIndex.length === 0 && !checkHasLockedRiddles()) {
+                  // No local data and can't reach server - show a message
+                  console.warn('No local data available and server unreachable');
+              }
+          } else if (gameRes.ok) {
               const { riddles: allRiddles, lastUpdated } = gameRes.data;
               
               const newUnlocked = {};

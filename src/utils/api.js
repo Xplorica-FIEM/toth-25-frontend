@@ -27,7 +27,14 @@ const fetchAPI = async (endpoint, options = {}) => {
   } catch (networkError) {
     console.error('❌ Network error - Backend not reachable:', networkError);
     console.error('Backend URL:', API_URL);
-    throw new Error(`Backend server not reachable at ${API_URL}. Make sure it's running.`);
+    // Return a structured error response instead of throwing
+    return {
+      ok: false,
+      status: 0,
+      data: null,
+      networkError: true,
+      message: `Backend server not reachable. Please check your connection.`
+    };
   }
 
   // Handle non-JSON responses safely
