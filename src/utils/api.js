@@ -184,6 +184,16 @@ export const completeGame = async () => {
   });
 };
 
+// ==================== RIDDLE ENDPOINTS (User) ====================
+
+/**
+ * Get riddle by ID (decrypted puzzleText)
+ * @param {string} riddleId - The riddle ID
+ */
+export const getRiddleById = async (riddleId) => {
+  return fetchAPI(`/api/riddles/${riddleId}`);
+};
+
 // ==================== LEADERBOARD ENDPOINTS ====================
 
 /**

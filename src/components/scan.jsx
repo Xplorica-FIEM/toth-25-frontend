@@ -1,17 +1,10 @@
 // components/scan.jsx
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/router";
 import { BrowserQRCodeReader } from "@zxing/browser";
-import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera, Wifi, WifiOff } from "lucide-react"; 
-import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
-import { triggerSync } from "@/utils/backgroundSync";
-import { decryptAES } from "@/utils/crypto";
-import { getLockedRiddle, getUnlockedRiddle, unlockRiddle, migrateFromLegacyStorage } from "@/utils/riddleStorage";
+import { X, Sparkles, ShieldAlert, Flashlight, FlashlightOff, Smartphone, Monitor, SwitchCamera, Wifi, WifiOff } from "lucide-react";
+import { getRiddleById } from "@/utils/api";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
-
-export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add onScanSuccess prop
-  const router = useRouter();
+export default function Scan({ onClose, onScanSuccess, mode = "game" }) {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
   const hasScannedRef = useRef(false);
@@ -25,91 +18,24 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
   const [availableCameras, setAvailableCameras] = useState([]);
   const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
   const [isOffline, setIsOffline] = useState(false);
-  const [memeData, setMemeData] = useState(null);
   
   const videoStreamRef = useRef(null);
-  const scanIntervalRef = useRef(null);
-
-  const persistScanToServer = useCallback(
-    async (riddleId, scannedAtIso, options = {}) => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error("Your session expired. Please login again before scanning.");
-      }
-
-      const payload = {
-        riddleId,
-        scannedAt: scannedAtIso,
-      };
-
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/scan`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const contentType = response.headers?.get('content-type');
-        const responseData = contentType && contentType.includes('application/json')
-          ? await response.json()
-          : null;
-
-        if (!response.ok) {
-          const message = responseData?.error || responseData?.message || 'Scan failed';
-          throw new Error(message);
-        }
-
-        return responseData;
-      } catch (error) {
-        const offline = typeof navigator !== 'undefined' && !navigator.onLine;
-        const networkIssue =
-          error?.name === 'TypeError' ||
-          /NetworkError|Failed to fetch|Load failed/i.test(error?.message || '');
-
-        if (offline || networkIssue) {
-          console.warn('Network issue while saving scan, queueing for retry', error);
-          await queueScan(riddleId, scannedAtIso);
-          await triggerSync();
-          setIsOffline(true);
-
-          if (options.requireRiddleData) {
-            throw new Error("You're offline. Scan saved locally and will sync once you're back online.");
-          }
-
-          return null;
-        }
-
-        throw error;
-      }
-    },
-    [setIsOffline]
-  );
 
   useEffect(() => {
     // Detect if mobile device
     setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
     
-    // Migrate legacy storage format if needed
-    migrateFromLegacyStorage();
-    
     // Monitor online/offline status
-    const handleOnline = () => {
-      setIsOffline(false);
-      // Trigger background sync when coming online
-      triggerSync();
-    };
+    const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     setIsOffline(!navigator.onLine);
     
-    // Initialize Camera immediately (no delay)
+    // Initialize Camera immediately
     readerRef.current = new BrowserQRCodeReader();
-    startScanning(); // Start immediately for faster interaction
+    startScanning();
 
     return () => {
       stopScanning();
@@ -231,6 +157,7 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
   const handleQRScan = async (qrData) => {
     setError("");
     setLoading(true);
+    setLoadingMessage("Loading riddle...");
 
     try {
       if (!qrData) throw new Error("Empty QR Code");
@@ -238,230 +165,58 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
       // Handle raw mode (e.g. for Admin verification)
       if (mode === "raw") {
         if (onScanSuccess) {
-            onScanSuccess(qrData);
+          onScanSuccess(qrData);
         }
+        setLoading(false);
         return;
       }
 
-      // 1. Handle Encrypted Riddle (ID:Secret format)
+      // Extract riddle ID from QR data (format: id:secret)
+      let riddleId = qrData.trim();
+      
       if (qrData.includes(':')) {
         const parts = qrData.split(':');
-        const riddleId = parts[0]?.trim();
-        const secret = parts[1]?.trim();
-        
-        if (!riddleId || !secret) {
-           throw new Error("Invalid QR Format: Missing ID or Secret");
-        }
-        
-        const encryptionSecret = secret;
-        
-        // CORRECTED: Use the specific IV from environment variables
-        const iv = process.env.NEXT_PUBLIC_AES_IV;
-        
-        if (!iv) {
-          console.error("Missing NEXT_PUBLIC_AES_IV in environment variables");
-          throw new Error("Decryption configuration missing");
-        }
-
-        // 2. First check if riddle is already unlocked (re-scan case)
-        const unlockedData = getUnlockedRiddle(riddleId);
-        
-        if (unlockedData && unlockedData.puzzleText) {
-          // Already unlocked - use cached decrypted data
-          console.log('✅ Riddle already unlocked, using cached data:', riddleId);
-          
-          const riddleData = {
-            id: riddleId,
-            puzzleText: unlockedData.puzzleText,
-            isUnlocked: true
-          };
-
-          // Store and Redirect
-          localStorage.setItem('currentRiddleId', riddleId);
-          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-          
-          // Still register the scan to server (for tracking purposes)
-          const scannedAtIso = new Date().toISOString();
-          (async () => {
-            try {
-              await persistScanToServer(riddleId, scannedAtIso, { requireRiddleData: false });
-              console.log('✅ Re-scan registered for riddle:', riddleId);
-            } catch (err) {
-              console.warn('⚠️ Re-scan registration failed:', err.message);
-            }
-          })();
-          
-          if (onScanSuccess) {
-            onScanSuccess(riddleId);
-            return;
-          }
-
-          await router.push(
-            {
-              pathname: '/ViewRiddles',
-              query: { id: riddleId }
-            },
-            '/ViewRiddles'
-          );
-          onClose();
-          return;
-        }
-
-        // 3. Fetch from distributed localStorage (locked riddles)
-        let lockedData = getLockedRiddle(riddleId);
-
-        // Fallback: check old storage format (riddle-data-*)
-        if (!lockedData) {
-            try {
-                const oldFormatData = localStorage.getItem(`riddle-data-${riddleId}`);
-                if (oldFormatData) {
-                    lockedData = JSON.parse(oldFormatData);
-                    console.log('📦 Found riddle in old storage format');
-                }
-            } catch (e) {
-                console.warn('Failed to check old storage format:', e);
-            }
-        }
-
-        if (!lockedData) {
-            throw new Error("Riddle definition not found on device. Please refresh the page and try again.");
-        }
-
-        // Handle data as a direct string based on your localStorage structure
-        // If lockedData is "abcd...", use it directly. If it's an object, check properties.
-        const encryptedText = typeof lockedData === 'string' 
-            ? lockedData 
-            : (lockedData.puzzleText || lockedData.encryptedText);
-
-        if (!encryptedText) throw new Error("No encrypted text available");
-
-        // Attempt decryption
-        let decryptedText;
-        try {
-            decryptedText = await decryptAES(encryptedText, encryptionSecret, iv);
-        } catch (decryptErr) {
-            console.error("Decryption failed:", decryptErr);
-            throw new Error("Invalid Secret Key. This QR code doesn't match the current riddle.");
-        }
-        
-        if (!decryptedText) throw new Error("Decryption returned empty");
-
-        const riddleData = {
-          id: riddleId,
-          puzzleText: decryptedText,
-          isUnlocked: true
-        };
-
-        // Save to distributed localStorage using unlockRiddle
-        try {
-          unlockRiddle(riddleId, {
-            puzzleText: decryptedText,
-            isSolved: true,
-            scannedAt: new Date().toISOString()
-          });
-        } catch(err) {
-          console.error("Failed to update unlocked riddles storage", err);
-        }
-
-        // Store and Redirect
-        localStorage.setItem('currentRiddleId', riddleId);
-        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-        
-        // Async background API call to register the scan - fire and forget
-        const scannedAtIso = new Date().toISOString();
-        (async () => {
-          try {
-            await persistScanToServer(riddleId, scannedAtIso, { requireRiddleData: false });
-            console.log('✅ Scan registered in background for riddle:', riddleId);
-          } catch (err) {
-            console.warn('⚠️ Background scan registration failed (will retry later):', err.message);
-          }
-        })();
-        
-        if (onScanSuccess) {
-          onScanSuccess(riddleId);
-          return; // Exit without closing modal or redirecting
-        }
-
-        await router.push(
-          {
-            pathname: '/ViewRiddles',
-            query: { id: riddleId }
-          },
-          '/ViewRiddles'
-        );
-        onClose();
-        return;
+        riddleId = parts[0]?.trim();
       }
 
-      // 2. Plain Riddle ID (Standard Flow)
-      const plainRiddleId = qrData.trim();
+      if (!riddleId || riddleId.length < 4) {
+        throw new Error("Invalid QR Code");
+      }
+
+      // Call API to get riddle
+      const response = await getRiddleById(riddleId);
+
+      if (response.networkError) {
+        setIsOffline(true);
+        throw new Error("You're offline. Please check your connection.");
+      }
+
+      if (!response.ok) {
+        throw new Error(response.data?.error || "Failed to load riddle");
+      }
+
+      const { riddle } = response.data;
+
+      if (!riddle || !riddle.puzzleText) {
+        throw new Error("Riddle not found");
+      }
+
+      console.log("✅ Riddle loaded:", riddle.id, riddle);
+
+      // Pass riddle data to parent component
+      if (onScanSuccess) {
+        console.log("Calling onScanSuccess with riddle data");
+        onScanSuccess(riddle);
+      }
       
-      if (!plainRiddleId.includes(':') && plainRiddleId.length === 6) {
-        // Check localStorage cache first
-        const cachedRiddle = await getCachedRiddle(plainRiddleId);
-        const scannedAtIso = new Date().toISOString();
-
-        let riddleData = null;
-
-        if (cachedRiddle) {
-          console.log(`✅ Cache hit for riddle id: ${plainRiddleId}`);
-          setLoadingMessage("⚡ Saving your scan...");
-          riddleData = {
-            id: cachedRiddle.id,
-            riddleName: cachedRiddle.riddleName,
-            puzzleText: cachedRiddle.puzzleText,
-            orderNumber: cachedRiddle.orderNumber
-          };
-        } else {
-          setLoadingMessage("⚡ Loading riddle...");
-        }
-
-        const serverData = await persistScanToServer(
-          plainRiddleId,
-          scannedAtIso,
-          { requireRiddleData: !cachedRiddle }
-        );
-
-        if (serverData?.riddle) {
-          riddleData = serverData.riddle;
-        }
-
-        if (!riddleData) {
-          throw new Error("Riddle data unavailable. Please try again.");
-        }
-
-        localStorage.setItem('currentRiddleId', plainRiddleId);
-        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-        
-        if (onScanSuccess) {
-          onScanSuccess(plainRiddleId);
-          return;
-        }
-
-        await router.push(
-          {
-            pathname: '/ViewRiddles',
-            query: { id: plainRiddleId }
-          },
-          '/ViewRiddles'
-        );
-        onClose();
-        return;
-      } else {
-         // Fails format check and didn't match previous flows
-         throw new Error("Invalid QR Code");
-      }
+      setLoading(false);
+      // Don't call onClose here - let parent component handle the transition
 
     } catch (err) {
       console.error('❌ Scan error:', err);
-      // Normalize error message to just "Invalid QR Code" for format/decryption issues
-      let message = err.message;
-      if (message.includes("Invalid QR") || message.includes("Decryption") || message.includes("not found on device") || message.includes("configuration missing") || message.includes("No encrypted text")) {
-          message = "Invalid QR Code";
-      }
-      setError(message);
+      setError(err.message || "Invalid QR Code");
       setLoading(false);
+      hasScannedRef.current = false;
     }
   };
 
@@ -507,14 +262,6 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
     } catch (err) {
       console.error("Torch error:", err);
     }
-  };
-
-  const showMemeModal = (meme) => {
-    setMemeData(meme);
-  };
-
-  const closeMemeModal = () => {
-    setMemeData(null);
   };
 
   return (
@@ -649,14 +396,8 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
           {loading && (
             <div className="bg-black rounded-xl overflow-hidden mb-4 h-[300px] flex items-center justify-center">
               <div className="text-center">
-                {loadingMessage.includes("oracle") ? (
-                  <Globe className="animate-pulse size-12 text-amber-400 mx-auto mb-4" />
-                ) : (
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
-                )}
-                <p className={loadingMessage.includes("oracle") ? "text-amber-300 font-medium" : "text-amber-200 font-medium"}>
-                  {loadingMessage}
-                </p>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
+                <p className="text-amber-200 font-medium">{loadingMessage}</p>
               </div>
             </div>
           )}
@@ -691,75 +432,6 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
           </div>
         </div>
       </div>
-
-      {/* Meme Modal - Trails of the Hunt Themed */}
-      {memeData && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/95 p-4">
-          <div className="max-w-2xl w-full bg-linear-to-br from-amber-50/95 via-yellow-50/95 to-amber-100/95 backdrop-blur-xl rounded-3xl border-4 border-amber-800/80 shadow-2xl overflow-hidden relative"
-            style={{
-              backgroundImage: 'url("data:image/svg+xml,%3Csvg width="200" height="200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" /%3E%3CfeColorMatrix type="saturate" values="0.1"/%3E%3C/filter%3E%3Crect width="200" height="200" filter="url(%23noise)" opacity="0.4" fill="%23d4a574"/%3E%3C/svg%3E")',
-              backgroundSize: '200px 200px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.1), 0 0 80px rgba(217, 119, 6, 0.3)'
-            }}>
-            
-            {/* Ancient decorative corners */}
-            <div className="absolute top-0 left-0 w-16 h-16 border-l-4 border-t-4 border-amber-700/40 rounded-tl-3xl"></div>
-            <div className="absolute top-0 right-0 w-16 h-16 border-r-4 border-t-4 border-amber-700/40 rounded-tr-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-16 h-16 border-l-4 border-b-4 border-amber-700/40 rounded-bl-3xl"></div>
-            <div className="absolute bottom-0 right-0 w-16 h-16 border-r-4 border-b-4 border-amber-700/40 rounded-br-3xl"></div>
-
-            {/* Header */}
-            <div className="bg-linear-to-r from-amber-900 via-amber-800 to-amber-900 px-6 py-3 border-b-4 border-amber-950/50 relative">
-              <div className="absolute top-1 left-1 text-amber-300/30 text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>❦</div>
-              <div className="absolute top-1 right-1 text-amber-300/30 text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>❦</div>
-              
-              <h2 className="text-2xl sm:text-3xl font-bold text-amber-50 text-center" style={{fontFamily: 'Cinzel, serif', letterSpacing: '0.05em'}}>
-                🎭 A Curious Discovery! 🎭
-              </h2>
-              <p className="text-amber-200/70 text-sm sm:text-base text-center mt-1" style={{fontFamily: 'IM Fell English, serif'}}>
-                Thou hast stumbled upon a secret jest!
-              </p>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 sm:p-8">
-              {/* Meme Image */}
-              <div className="mb-6 bg-amber-100/50 backdrop-blur-sm rounded-2xl p-4 border-4 border-amber-800/40 shadow-inner relative"
-                style={{
-                  backgroundImage: 'url("data:image/svg+xml,%3Csvg width="100" height="100" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="paper"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" /%3E%3C/filter%3E%3Crect width="100" height="100" filter="url(%23paper)" opacity="0.15" /%3E%3C/svg%3E")',
-                  boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.15)'
-                }}>
-                <img 
-                  src={memeData.imageUrl} 
-                  alt={memeData.name}
-                  className="w-full rounded-xl border-2 border-amber-800/30 shadow-lg"
-                  onError={(e) => {
-                    e.target.src = 'https://via.placeholder.com/600x400?text=Image+Not+Found';
-                  }}
-                />
-              </div>
-
-              {/* Meme Caption */}
-              {memeData.caption && (
-                <div className="bg-amber-100/50 rounded-xl p-4 border-2 border-amber-800/30 mb-6">
-                  <p className="text-amber-950 text-center text-lg sm:text-xl font-bold" style={{fontFamily: 'IM Fell English, serif', fontStyle: 'italic'}}>
-                    {memeData.caption}
-                  </p>
-                </div>
-              )}
-
-              {/* Close Button */}
-              <button
-                onClick={closeMemeModal}
-                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg border border-amber-400/50 transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
-                style={{fontFamily: 'Cinzel, serif'}}
-              >
-                ⚔️ Continue Thy Quest
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

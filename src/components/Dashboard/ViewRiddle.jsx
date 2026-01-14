@@ -2,64 +2,59 @@
 import { useState, useEffect } from 'react';
 import { X } from "lucide-react";
 import RiddleTemplate from '../RiddleTemplate';
-import { getUnlockedRiddle } from "@/utils/riddleStorage";
+import { getRiddleById } from "@/utils/api";
 
-const ViewRiddleToUser = ({ riddleId, onClose }) => {
-  const [riddle, setRiddle] = useState(null);
-  const [loading, setLoading] = useState(true);
+const ViewRiddleToUser = ({ riddle: riddleProp, riddleId, onClose }) => {
+  const [riddle, setRiddle] = useState(riddleProp || null);
+  const [loading, setLoading] = useState(!riddleProp);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // If riddle is passed directly, use it
+    if (riddleProp) {
+      setRiddle(riddleProp);
+      setLoading(false);
+      return;
+    }
+
+    // If only riddleId is passed, fetch from API
     if (!riddleId) {
       setLoading(false);
       return;
     }
 
-    const fetchLocalRiddle = () => {
+    const fetchRiddle = async () => {
       try {
         setLoading(true);
         setError('');
         
-        // ONLY fetch from unlocked riddles storage
-        let foundRiddle = getUnlockedRiddle(riddleId);
+        const response = await getRiddleById(riddleId);
 
-        // Fallback: Check currentRiddleData (immediate scan result source)
-        if (!foundRiddle) {
-           const currentData = localStorage.getItem('currentRiddleData');
-           if (currentData) {
-               const parsed = JSON.parse(currentData);
-               // loose equality for string/number id mismatch safety
-               if (String(parsed.id) === String(riddleId)) {
-                   foundRiddle = parsed;
-               }
-           }
+        if (response.networkError) {
+          setError('You are offline. Please check your connection.');
+          return;
         }
 
-        if (foundRiddle) {
-          // If foundRiddle is a string (from gameData format), normalize it to object
-          if (typeof foundRiddle === 'string') {
-              setRiddle({
-                  id: riddleId,
-                  puzzleText: foundRiddle,
-                  riddleName: "Mystery Clue", 
-                  isSolved: true
-              });
-          } else {
-              setRiddle(foundRiddle);
-          }
+        if (!response.ok) {
+          setError(response.data?.error || 'Failed to load riddle');
+          return;
+        }
+
+        if (response.data?.riddle) {
+          setRiddle(response.data.riddle);
         } else {
-          setError('Riddle data not found locally. Please try scanning again.');
+          setError('Riddle not found');
         }
       } catch (err) {
-        console.error("Error reading local riddle:", err);
-        setError('Failed to retrieve riddle data.');
+        console.error("Error fetching riddle:", err);
+        setError('Failed to load riddle');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchLocalRiddle();
-  }, [riddleId]);
+    fetchRiddle();
+  }, [riddleProp, riddleId]);
 
   const getBackgroundImage = (id) => {
     if (!id) return '/toth1.png';
@@ -69,7 +64,7 @@ const ViewRiddleToUser = ({ riddleId, onClose }) => {
     return backgrounds[hash % backgrounds.length];
   };
 
-  if (!riddleId) return null;
+  if (!riddleProp && !riddleId) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-0 overflow-y-auto isolate">

@@ -6,14 +6,21 @@ import ViewRiddleToUser from './ViewRiddle';
 const Scan = dynamic(() => import("../scan"), { ssr: false });
 
 const ScannerModal = ({ onClose }) => {
-  const [unlockedRiddleId, setUnlockedRiddleId] = useState(null);
+  const [scannedRiddle, setScannedRiddle] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleScanSuccess = (riddle) => {
+    console.log("ScannerModal received riddle:", riddle);
+    setScannedRiddle(riddle);
+    setIsLoading(false);
+  };
 
   // If a riddle was successfully scanned, show the ViewRiddleToUser component
-  if (unlockedRiddleId) {
+  if (scannedRiddle) {
     return (
       <ViewRiddleToUser 
-        riddleId={unlockedRiddleId} 
-        onClose={onClose} // Closing the riddle view closes the whole modal logic
+        riddle={scannedRiddle} 
+        onClose={onClose}
       />
     );
   }
@@ -26,7 +33,7 @@ const ScannerModal = ({ onClose }) => {
         </button>
         <Scan 
           onClose={onClose} 
-          onScanSuccess={(id) => setUnlockedRiddleId(id)} 
+          onScanSuccess={handleScanSuccess}
         />
       </div>
     </div>
