@@ -29,7 +29,8 @@ const StatsGrid = ({ onOpenScanner }) => {
   const handleRiddleClick = async (riddleId) => {
     setRiddleLoading(true);
     try {
-      const response = await getRiddleById(riddleId);
+      // Pass 'view' to indicate this is from Unlocked Riddles, not a new QR scan
+      const response = await getRiddleById(riddleId, 'view');
       if (response.ok && response.data?.riddle) {
         setSelectedRiddle(response.data.riddle);
       }

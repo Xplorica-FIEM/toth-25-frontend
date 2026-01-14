@@ -189,9 +189,10 @@ export const completeGame = async () => {
 /**
  * Get riddle by ID (decrypted puzzleText)
  * @param {string} riddleId - The riddle ID
+ * @param {string} source - 'scan' for QR scan (logs entry), 'view' for viewing unlocked (no log)
  */
-export const getRiddleById = async (riddleId) => {
-  return fetchAPI(`/api/riddles/${riddleId}`);
+export const getRiddleById = async (riddleId, source = 'scan') => {
+  return fetchAPI(`/api/riddles/${riddleId}?source=${source}`);
 };
 
 /**
