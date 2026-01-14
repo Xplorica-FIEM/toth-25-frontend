@@ -320,10 +320,10 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
                   Decipher the ancient riddle and continue thy noble quest
                 </p>
 
-                {/* Scan Again Button - Shown for all users */}
+                {/* Close Button - Shown for all users */}
                 <div className="pt-2 md:pt-3">
                   <button
-                    onClick={() => onClose ? onClose() : router.push('/dashboard')}
+                    onClick={onClose}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 md:px-6 md:py-3 bg-linear-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white rounded-xl font-semibold shadow-lg border border-amber-400/50 text-sm md:text-base transition-all duration-300 ease-out hover:scale-[1.02] hover:shadow-xl active:scale-[0.98]"
                   >
                     <ScanLine className="size-4 md:size-5" />

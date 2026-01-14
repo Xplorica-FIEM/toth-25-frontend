@@ -9,6 +9,15 @@ import {
 import dynamic from "next/dynamic";
 import { getCurrentUser, loadGame, getLastGameUpdate } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
+import {
+  getAllUnlockedRiddles,
+  getUnlockedRiddlesIndex,
+  storeLockedRiddles,
+  storeUnlockedRiddles,
+  hasLockedRiddles as checkHasLockedRiddles,
+  clearAllRiddleStorage,
+  migrateFromLegacyStorage
+} from "@/utils/riddleStorage";
 import LoadingScreen from "./LoadingScreen";
 import BackgroundElements from "./BackgroundElements";
 import Navbar from "./Navbar";
@@ -66,21 +75,16 @@ const DashboardBody = () => {
 
   const checkAndLoadGame = async (forceRefetch = false) => {
     try {
-      const localUnlocked = localStorage.getItem("unlocked-riddles");
+      // Migrate legacy storage if needed
+      migrateFromLegacyStorage();
       
-      // 1. Initial Load from LocalStorage (if exists)
-      if (localUnlocked) {
-        try {
-          const unlockedMap = JSON.parse(localUnlocked);
-          // riddles state holds ARRAY of unlocked/solved riddles
-          const unlockedList = Object.values(unlockedMap);
-          setRiddles(unlockedList);
-          if (unlockedList.length > 0) {
-            setGameStatus("active");
-          }
-        } catch (parseError) {
-          console.error("Failed to parse local riddles:", parseError);
-        }
+      // 1. Initial Load from distributed localStorage
+      const unlockedList = getAllUnlockedRiddles();
+      const unlockedIndex = getUnlockedRiddlesIndex();
+      
+      if (unlockedList.length > 0) {
+        setRiddles(unlockedList);
+        setGameStatus("active");
       }
 
       // 2. Check outdated vs Server
@@ -88,15 +92,11 @@ const DashboardBody = () => {
       
       if (!shouldFetch) {
         // If we don't have data, we MUST fetch
-        if (!localUnlocked) {
+        if (unlockedIndex.length === 0 && !checkHasLockedRiddles()) {
           shouldFetch = true;
         } else {
             // Check timestamps
             const localLastUpdated = localStorage.getItem("game-last-updated");
-            // If we have data but no timestamp, we probably should fetch to be safe, 
-            // or maybe we trust the data? User said "if yes then no need to fetch it."
-            // But also said: "Everytime user refresh ... check last update time api ... If mismatches then immideately call loadgame"
-            // So I should check timestamp.
             
             const updateRes = await getLastGameUpdate();
             if (updateRes.ok) {
@@ -126,20 +126,17 @@ const DashboardBody = () => {
                   }
               });
               
-              localStorage.setItem("unlocked-riddles", JSON.stringify(newUnlocked));
-              localStorage.setItem("locked-riddles", JSON.stringify(newLocked));
+              // Store using distributed storage
+              storeUnlockedRiddles(newUnlocked);
+              storeLockedRiddles(newLocked);
               if (lastUpdated) {
                   localStorage.setItem("game-last-updated", lastUpdated);
               }
               
-              const unlockedList = Object.values(newUnlocked);
-              setRiddles(unlockedList);
+              const unlockedListNew = Object.values(newUnlocked);
+              setRiddles(unlockedListNew);
               
-              setGameStatus("active"); // Set active if we successfully loaded game
-              
-              if (allRiddles.length === 0) {
-                 // No riddles at all?
-              }
+              setGameStatus("active");
 
           } else if (gameRes.status === 403 && gameRes.data?.type === 'game_not_started') {
               setGameStatus("not_started");
@@ -147,13 +144,7 @@ const DashboardBody = () => {
       }
 
       // Check for available locked riddles to enable scanning
-      const finalLockedStr = localStorage.getItem("locked-riddles");
-      if (finalLockedStr) {
-        const lockedObj = JSON.parse(finalLockedStr);
-        setHasLockedRiddles(Object.keys(lockedObj).length > 0);
-      } else {
-        setHasLockedRiddles(false);
-      }
+      setHasLockedRiddles(checkHasLockedRiddles());
       
     } catch (error) {
         console.error("Error loading game:", error);
@@ -163,8 +154,7 @@ const DashboardBody = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("locked-riddles");
-    localStorage.removeItem("unlocked-riddles");
+    clearAllRiddleStorage();
     localStorage.removeItem("game-last-updated");
     logout();
     router.push("/login");

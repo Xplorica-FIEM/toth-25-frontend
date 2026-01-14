@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { X } from "lucide-react";
 import RiddleTemplate from '../RiddleTemplate';
+import { getUnlockedRiddle, getRiddleData } from "@/utils/riddleStorage";
 
 const ViewRiddleToUser = ({ riddleId, onClose }) => {
   const [riddle, setRiddle] = useState(null);
@@ -19,14 +20,8 @@ const ViewRiddleToUser = ({ riddleId, onClose }) => {
         setLoading(true);
         setError('');
         
-        // Fetch from unlocked-riddles in localStorage as requested (primary source for multiple riddles)
-        const unlockedStored = localStorage.getItem('unlocked-riddles');
-        let foundRiddle = null;
-
-        if (unlockedStored) {
-          const unlockedMap = JSON.parse(unlockedStored);
-          foundRiddle = unlockedMap[riddleId];
-        }
+        // Fetch from distributed localStorage (primary source)
+        let foundRiddle = getUnlockedRiddle(riddleId) || getRiddleData(riddleId);
 
         // Fallback: Check currentRiddleData (immediate scan result source)
         if (!foundRiddle) {
@@ -117,6 +112,7 @@ const ViewRiddleToUser = ({ riddleId, onClose }) => {
                backgroundImage={getBackgroundImage(riddle.id)}
                isAuthenticated={true}
                riddleId={riddle.id}
+               onClose={onClose}
              />
           </div>
         )}

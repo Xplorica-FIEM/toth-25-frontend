@@ -6,6 +6,7 @@ import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone,
 import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
 import { triggerSync } from "@/utils/backgroundSync";
 import { decryptAES } from "@/utils/crypto";
+import { getLockedRiddle, unlockRiddle } from "@/utils/riddleStorage";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
@@ -232,10 +233,8 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
           throw new Error("Decryption configuration missing");
         }
 
-        // 2. Fetch from localStorage (locked-riddles)
-        const lockedRiddlesStr = localStorage.getItem('locked-riddles');
-        const lockedMap = lockedRiddlesStr ? JSON.parse(lockedRiddlesStr) : {};
-        const lockedData = lockedMap[riddleId];
+        // 2. Fetch from distributed localStorage (locked riddles)
+        const lockedData = getLockedRiddle(riddleId);
 
         if (!lockedData) {
             throw new Error("Riddle definition not found on device.");
@@ -266,19 +265,13 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
           isUnlocked: true
         };
 
-        // Save to unlocked-riddles object in localStorage
+        // Save to distributed localStorage using unlockRiddle
         try {
-          const unlockedStored = localStorage.getItem('unlocked-riddles');
-          let unlockedRiddles = {};
-          if (unlockedStored) {
-            const parsed = JSON.parse(unlockedStored);
-            if (typeof parsed === 'object' && !Array.isArray(parsed)) {
-              unlockedRiddles = parsed;
-            }
-          }
-          // Add/Update the specific riddle in the map
-          unlockedRiddles[riddleId] = decryptedText;
-          localStorage.setItem('unlocked-riddles', JSON.stringify(unlockedRiddles));
+          unlockRiddle(riddleId, {
+            puzzleText: decryptedText,
+            isSolved: true,
+            scannedAt: new Date().toISOString()
+          });
         } catch(err) {
           console.error("Failed to update unlocked riddles storage", err);
         }
@@ -286,6 +279,17 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
         // Store and Redirect
         localStorage.setItem('currentRiddleId', riddleId);
         localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+        
+        // Async background API call to register the scan - fire and forget
+        const scannedAtIso = new Date().toISOString();
+        (async () => {
+          try {
+            await persistScanToServer(riddleId, scannedAtIso, { requireRiddleData: false });
+            console.log('✅ Scan registered in background for riddle:', riddleId);
+          } catch (err) {
+            console.warn('⚠️ Background scan registration failed (will retry later):', err.message);
+          }
+        })();
         
         if (onScanSuccess) {
           onScanSuccess(riddleId);
@@ -551,9 +555,7 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
                 </p>
               </div>
               
-              <p className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-center text-amber-300 text-sm font-semibold bg-black/80 px-4 py-2 rounded-lg">
-                {isScanning ? "🔍 Searching..." : "⚡ Ready to Hunt"}
-              </p>
+
             </div>
           )}
 

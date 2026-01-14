@@ -4,7 +4,26 @@ import ViewRiddleToUser from './ViewRiddle';
 
 const SolvedRiddles = ({ riddles }) => {
   const [selectedRiddleId, setSelectedRiddleId] = useState(null);
-  const solvedRiddles = riddles.filter(r => r.isSolved);
+  
+  // Normalize riddles - handle both string format (legacy) and object format
+  // All riddles in unlocked-riddles are solved, so no need to filter by isSolved
+  const solvedRiddles = riddles.map((riddle, index) => {
+    // If riddle is a string (legacy format), convert to object
+    if (typeof riddle === 'string') {
+      return {
+        id: `legacy-${index}`,
+        puzzleText: riddle,
+        isSolved: true
+      };
+    }
+    // If riddle is already an object, ensure it has required properties
+    return {
+      id: riddle.id || `riddle-${index}`,
+      puzzleText: riddle.puzzleText || riddle,
+      isSolved: true,
+      scannedAt: riddle.scannedAt
+    };
+  });
 
   return (
     <div className="mt-8 space-y-4">
@@ -23,7 +42,7 @@ const SolvedRiddles = ({ riddles }) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {solvedRiddles.map((riddle) => (
+          {solvedRiddles.map((riddle, index) => (
             <div 
               key={riddle.id}
               onClick={() => setSelectedRiddleId(riddle.id)}
@@ -39,8 +58,8 @@ const SolvedRiddles = ({ riddles }) => {
               </div>
               
               <div className="relative z-10">
-                <p className="text-amber-200/50 text-sm italic mb-4 leading-relaxed">
-                  "{riddle.puzzleText.length > 60 ? riddle.puzzleText.substring(0, 60) + '...' : riddle.puzzleText}"
+                <p className="text-amber-100 text-lg font-semibold mb-4">
+                  Riddle {index + 1}
                 </p>
                 
                 <div className="flex items-center justify-end pt-4 border-t border-amber-900/30">
