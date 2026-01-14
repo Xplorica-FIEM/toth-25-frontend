@@ -108,7 +108,12 @@ export default function Register() {
         return;
       }
 
-      router.push(`/verifyotp?email=${encodeURIComponent(formData.email)}`);
+      const { token, user } = data;
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+
+      router.push(user?.isAdmin ? '/admin/dashboard' : '/dashboard');
     } catch (error) {
       setErrors({ submit: 'Network error. Please try again.' });
       setLoading(false);

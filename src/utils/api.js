@@ -82,25 +82,6 @@ export const register = async (email, password, confirmPassword, fullName, class
   });
 };
 
-/**
- * Verify OTP (Step 2)
- */
-export const verifyOTP = async (email, otp) => {
-  return fetchAPI('/api/auth/verify-otp', {
-    method: 'POST',
-    body: JSON.stringify({ email, otp }),
-  });
-};
-
-/**
- * Resend OTP
- */
-export const resendOTP = async (email) => {
-  return fetchAPI('/api/auth/resend-otp', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  });
-};
 
 /**
  * Login
@@ -370,8 +351,6 @@ export const checkGameStatus = async () => {
 export default {
   // Auth
   register,
-  verifyOTP,
-  resendOTP,
   login,
   getCurrentUser,
   

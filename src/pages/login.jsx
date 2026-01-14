@@ -56,12 +56,8 @@ export default function Login() {
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.requiresVerification) {
-          router.push(`/verifyotp?email=${encodeURIComponent(formData.email)}`);
-        } else {
-          setErrors({ submit: data.message || 'Login failed' });
-          setLoading(false);
-        }
+        setErrors({ submit: data.error || data.message || 'Login failed' });
+        setLoading(false);
         return;
       }
 

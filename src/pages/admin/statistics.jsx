@@ -47,11 +47,34 @@ function AdminStatisticsContent() {
         getUserScanStats()
       ]);
 
-      if (statsRes.ok) setGeneralStats(statsRes.data.stats);
-      if (leaderboardRes.ok && leaderboardRes.data.leaderboard) setLeaderboard(leaderboardRes.data.leaderboard);
-      if (riddleScansRes.ok) setRiddleScans(riddleScansRes.data);
-      if (recentActivityRes.ok) setRecentActivity(recentActivityRes.data);
-      if (userScanStatsRes.ok) setUserScanStats(userScanStatsRes.data);
+      if (statsRes.ok) setGeneralStats(statsRes.data?.stats ?? null);
+      if (leaderboardRes.ok && Array.isArray(leaderboardRes.data?.leaderboard)) {
+        setLeaderboard(leaderboardRes.data.leaderboard);
+      }
+      if (riddleScansRes.ok) {
+        const scanStats = Array.isArray(riddleScansRes.data)
+          ? riddleScansRes.data
+          : Array.isArray(riddleScansRes.data?.data)
+            ? riddleScansRes.data.data
+            : [];
+        setRiddleScans(scanStats);
+      }
+      if (recentActivityRes.ok) {
+        const recentScans = Array.isArray(recentActivityRes.data)
+          ? recentActivityRes.data
+          : Array.isArray(recentActivityRes.data?.data)
+            ? recentActivityRes.data.data
+            : [];
+        setRecentActivity(recentScans);
+      }
+      if (userScanStatsRes.ok) {
+        const userStats = Array.isArray(userScanStatsRes.data)
+          ? userScanStatsRes.data
+          : Array.isArray(userScanStatsRes.data?.data)
+            ? userScanStatsRes.data.data
+            : [];
+        setUserScanStats(userStats);
+      }
 
     } catch (error) {
       console.error("Failed to fetch statistics data:", error);
