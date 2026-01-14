@@ -69,55 +69,31 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
         return;
       }
 
-      // Store available cameras
-      setAvailableCameras(devices);
+      // On mobile, try to prioritize the back camera as the first device
+      // Check navigator directly to avoid closure stale state on initial render
+      const isMobileDevice = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-      // Select camera based on device type and current index
-      let selectedCamera;
-      
-      // Optimized video constraints for performance
-      const videoConstraints = {
-        width: { ideal: isMobile ? 1280 : 1920, max: isMobile ? 1920 : 2560 },
-        height: { ideal: isMobile ? 720 : 1080, max: isMobile ? 1080 : 1440 },
-        frameRate: { ideal: 30, max: 30 },
-        aspectRatio: { ideal: 16/9 },
-        facingMode: currentCameraIndex === 0 && isMobile ? { ideal: 'environment' } : 'user'
-      };
-      
-      if (currentCameraIndex === 0 && isMobile) {
-        // Mobile: prefer back camera initially
-        // First try using facingMode to get back camera
-        try {
-          const testStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: { exact: "environment" } } 
-          });
-          testStream.getTracks().forEach(track => track.stop());
-          
-          // If successful, find the back camera from devices
-          const backCamera = devices.find((d) => {
-            const label = d.label.toLowerCase();
-            return label.includes("back") || 
-                   label.includes("rear") ||
-                   label.includes("environment") ||
-                   label.includes("facing back");
-          });
-          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
-        } catch {
-          // Fallback: try to find back camera by label or use second camera
-          const backCamera = devices.find((d) => {
-            const label = d.label.toLowerCase();
-            return label.includes("back") || 
-                   label.includes("rear") ||
-                   label.includes("environment") ||
-                   label.includes("facing back");
-          });
-          selectedCamera = backCamera || (devices.length > 1 ? devices[1] : devices[0]);
+      if (isMobileDevice) {
+        const backCameraIndex = devices.findIndex((d) => {
+          const label = d.label.toLowerCase();
+           return label.includes("back") || 
+                  label.includes("rear") ||
+                  label.includes("environment");
+        });
+
+        if (backCameraIndex > 0) {
+           const backCamera = devices[backCameraIndex];
+           devices.splice(backCameraIndex, 1);
+           devices.unshift(backCamera);
         }
-      } else {
-        // Use camera by index (for switching)
-        selectedCamera = devices[currentCameraIndex % devices.length];
       }
 
+      // Store available cameras (sorted)
+      setAvailableCameras(devices);
+
+      // Select camera based on index
+      const selectedCamera = devices[currentCameraIndex % devices.length];
+      
       // Configure QR reader with performance hints
       const hints = new Map();
       const BarcodeFormat = (await import('@zxing/library')).BarcodeFormat;
@@ -166,10 +142,19 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
     setLoading(true);
 
     try {
+      if (!qrData) throw new Error("Empty QR Code");
+
       // 1. Handle Encrypted Riddle (ID:Secret format)
       if (qrData.includes(':')) {
-        const [riddleId, secret] = qrData.split(':');
-        const encryptionSecret = secret.trim();
+        const parts = qrData.split(':');
+        const riddleId = parts[0]?.trim();
+        const secret = parts[1]?.trim();
+        
+        if (!riddleId || !secret) {
+           throw new Error("Invalid QR Format: Missing ID or Secret");
+        }
+        
+        const encryptionSecret = secret;
         
         // CORRECTED: Use the specific IV from environment variables
         const iv = process.env.NEXT_PUBLIC_AES_IV;
@@ -291,6 +276,9 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
           return;
         } else {
           // Cache miss: Call backend API
+          await queueScan(plainRiddleId);
+          triggerSync();
+
           setLoadingMessage("⚡ Loading riddle...");
           const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/scan`, {
             method: 'POST',
@@ -468,8 +456,8 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
                 </div>
               </div>
               
-              {/* Mobile camera controls */}
-              {isMobile && (
+              {/* Camera controls */}
+              {(isMobile || availableCameras.length > 1) && (
                 <div className="absolute bottom-4 right-4 flex gap-2 z-10">
                   {/* Switch camera button */}
                   {availableCameras.length > 1 && (
@@ -492,24 +480,25 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
                       }}
                       className="p-3 bg-black/80 hover:bg-black rounded-full border border-amber-500/30 transition-all disabled:opacity-50"
                       title="Switch Camera"
-                      disabled={availableCameras.length <= 1}
                     >
                       <SwitchCamera className="size-5 text-amber-300" />
                     </button>
                   )}
                   
                   {/* Torch button */}
-                  <button
-                    onClick={toggleTorch}
-                    className="p-3 bg-black/80 hover:bg-black rounded-full border border-amber-500/30 transition-all"
-                    title={torchEnabled ? "Turn off flashlight" : "Turn on flashlight"}
-                  >
-                    {torchEnabled ? (
-                      <Flashlight className="size-5 text-amber-400" />
-                    ) : (
-                      <FlashlightOff className="size-5 text-amber-300" />
-                    )}
-                  </button>
+                  {isMobile && (
+                    <button
+                      onClick={toggleTorch}
+                      className="p-3 bg-black/80 hover:bg-black rounded-full border border-amber-500/30 transition-all"
+                      title={torchEnabled ? "Turn off flashlight" : "Turn on flashlight"}
+                    >
+                      {torchEnabled ? (
+                        <Flashlight className="size-5 text-amber-400" />
+                      ) : (
+                        <FlashlightOff className="size-5 text-amber-300" />
+                      )}
+                    </button>
+                  )}
                 </div>
               )}
               

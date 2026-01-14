@@ -12,8 +12,10 @@ import {
   X,
   Shield,
   ImagePlus,
+  Settings,
 } from "lucide-react";
-import { logout, getUser } from "@/utils/auth";
+import { logout } from "@/utils/auth";
+import { getCurrentUser } from "@/utils/api";
 
 export default function AdminLayout({ children, activeTab }) {
   const router = useRouter();
@@ -22,7 +24,18 @@ export default function AdminLayout({ children, activeTab }) {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setCurrentUser(getUser());
+    // Fetch user from API instead of localStorage
+    const fetchUser = async () => {
+        try {
+            const res = await getCurrentUser();
+            if (res.ok && res.data?.user) {
+                setCurrentUser(res.data.user);
+            }
+        } catch (err) {
+            console.error("Failed to fetch user in layout", err);
+        }
+    };
+    fetchUser();
     
     // Detect mobile on mount and resize
     const checkMobile = () => {
@@ -46,9 +59,10 @@ export default function AdminLayout({ children, activeTab }) {
     { id: "overview", label: "Overview", icon: LayoutDashboard, path: "/admin/dashboard" },
     { id: "users", label: "Users", icon: Users, path: "/admin/users" },
     { id: "riddles", label: "Riddles", icon: Scroll, path: "/admin/riddles" },
-    { id: "meme-riddles", label: "Meme Riddles", icon: ImagePlus, path: "/admin/meme-riddles" },
+    
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/admin/leaderboard" },
     { id: "statistics", label: "Statistics", icon: BarChart3, path: "/admin/statistics" },
+    { id: "settings", label: "Global Settings", icon: Settings, path: "/admin/settings" },
   ];
 
   return (

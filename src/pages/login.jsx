@@ -66,7 +66,7 @@ export default function Login() {
 
       // Store token and user data
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // localStorage.setItem('user', JSON.stringify(data.user)); // Access via API only now
 
       // Redirect to appropriate dashboard
       if (data.user.isAdmin) {

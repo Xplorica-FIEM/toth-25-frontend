@@ -38,15 +38,17 @@ export const isAuthenticated = () => {
 
 /**
  * Save user data to localStorage
+ * DEPRECATED: We now rely on backend API for user data
  */
 export const saveUser = (user) => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('user', JSON.stringify(user));
-  }
+  // if (typeof window !== 'undefined') {
+  //   localStorage.setItem('user', JSON.stringify(user));
+  // }
 };
 
 /**
  * Get user data from localStorage
+ * DEPRECATED: Use getCurrentUser() from API instead
  */
 export const getUser = () => {
   if (typeof window !== 'undefined') {
@@ -58,6 +60,7 @@ export const getUser = () => {
 
 /**
  * Check if user is admin
+ * DEPRECATED: This checks old localStorage data. Use API check instead.
  */
 export const isAdmin = () => {
   const user = getUser();

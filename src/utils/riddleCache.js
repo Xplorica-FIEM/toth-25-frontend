@@ -235,6 +235,25 @@ export async function getPendingScans() {
 }
 
 /**
+ * Remove scan from queue (after successful sync)
+ */
+export async function removeScanFromQueue(queueId) {
+  try {
+    const queue = getScanQueue();
+    const newQueue = queue.filter(scan => scan.queueId !== queueId);
+    
+    if (newQueue.length !== queue.length) {
+      localStorage.setItem(SCAN_QUEUE_KEY, JSON.stringify(newQueue));
+    }
+
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to remove scan from queue:', error);
+    return false;
+  }
+}
+
+/**
  * Mark scan as synced
  */
 export async function markScanSynced(queueId) {
@@ -331,6 +350,7 @@ export default {
   queueScan,
   getPendingScans,
   markScanSynced,
+  removeScanFromQueue,
   clearCache,
   isCachePopulated,
   cleanupOldIndexedDB
