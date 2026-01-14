@@ -117,6 +117,38 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
     }
   };
 
+  // Helper function to check if a string is a URL
+  const isUrl = (str) => {
+    if (!str || typeof str !== 'string') return false;
+    const trimmed = str.trim();
+    try {
+      const url = new URL(trimmed);
+      return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch {
+      // Also check for common URL patterns without protocol
+      return /^(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/i.test(trimmed);
+    }
+  };
+
+  // Helper to render text with URL detection
+  const renderTextWithUrls = (text) => {
+    const trimmed = text.trim();
+    if (isUrl(trimmed)) {
+      const href = trimmed.startsWith('http') ? trimmed : `https://${trimmed}`;
+      return (
+        <a 
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-amber-700 hover:text-amber-900 underline decoration-amber-600/50 hover:decoration-amber-800 transition-colors duration-200 break-all"
+        >
+          {trimmed}
+        </a>
+      );
+    }
+    return text;
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Lazy-loaded Background Image */}
@@ -270,7 +302,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
                           ) : (
                             comp.data.split('\n').map((line, lIdx) => (
                               <p key={lIdx} className="drop-shadow-sm mb-2 last:mb-0">
-                                {line}
+                                {renderTextWithUrls(line)}
                               </p>
                             ))
                           )}

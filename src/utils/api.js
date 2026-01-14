@@ -307,6 +307,27 @@ export const getAdminStats = async () => {
 };
 
 /**
+ * Get riddle scan stats
+ */
+export const getRiddleScanStats = async () => {
+    return fetchAPI('/api/admin/stats/riddle-scans');
+};
+  
+/**
+ * Get recent scans
+ */
+export const getRecentScans = async (limit = 10) => {
+    return fetchAPI(`/api/admin/stats/recent-scans?limit=${limit}`);
+};
+  
+/**
+ * Get user scan stats
+ */
+export const getUserScanStats = async () => {
+    return fetchAPI('/api/admin/stats/user-scans');
+};
+
+/**
  * Get Global Settings
  */
 export const getGlobalSettings = async () => {
@@ -361,6 +382,9 @@ export default {
   getAdminUsers,
   toggleAdminStatus,
   getAdminStats,
+  getRiddleScanStats,
+  getRecentScans,
+  getUserScanStats,
   getGlobalSettings,
   updateGlobalSetting,
 };
