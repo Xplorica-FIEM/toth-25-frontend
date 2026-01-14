@@ -18,7 +18,7 @@ import TimerCountdown from "./TimerCountdown";
 import SolvedRiddles from "./SolvedRiddles";
 
 // EDIT THIS DATE TO CHANGE THE COUNTDOWN
-const TARGET_GAME_START = "2026-01-14T14:30:00";
+const TARGET_GAME_START = "2026-01-14T14:45:00";
 
 const DashboardBody = () => {
   const router = useRouter();

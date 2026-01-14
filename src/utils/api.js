@@ -328,6 +328,20 @@ export const getUserScanStats = async () => {
 };
 
 /**
+ * Get first scanner per riddle (Admin)
+ */
+export const getRiddleFirstScans = async () => {
+  return fetchAPI('/api/admin/stats/riddle-first-scans');
+};
+
+/**
+ * Get top users by unique riddles scanned (Admin)
+ */
+export const getUserUniqueRiddleStats = async (limit = 10) => {
+  return fetchAPI(`/api/admin/stats/user-unique-riddles?limit=${limit}`);
+};
+
+/**
  * Get Global Settings
  */
 export const getGlobalSettings = async () => {
@@ -392,6 +406,8 @@ export default {
   getRiddleScanStats,
   getRecentScans,
   getUserScanStats,
+  getRiddleFirstScans,
+  getUserUniqueRiddleStats,
   getGlobalSettings,
   updateGlobalSetting,
   checkGameStatus,
