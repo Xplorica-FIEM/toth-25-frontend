@@ -3,8 +3,7 @@ import { useRouter } from 'next/router';
 import Image from 'next/image'; // Import Next.js Image component
 import Link from 'next/link'; // Import Link for prefetching
 import { Lock, Unlock, ArrowLeft, CheckCircle, Edit, Scroll, ScanLine } from 'lucide-react';
-import { getUser } from '@/utils/auth';
-import { getAdminRiddles } from '@/utils/api';
+import { getCurrentUser, getAdminRiddles } from '@/utils/api';
 
 const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, isAuthenticated, riddleId, onClose }) => {
   const router = useRouter();
@@ -19,13 +18,25 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
     // CRITICAL: Show content immediately
     setContentVisible(true);
     
-    const user = getUser();
-    setCurrentUser(user);
+    // Fetch user from API
+    const fetchUser = async () => {
+      try {
+        const res = await getCurrentUser();
+        if (res.ok && res.data?.user) {
+          const user = res.data.user;
+          setCurrentUser(user);
+          
+          // NON-CRITICAL: Fetch all riddles in background if admin
+          if (user.isAdmin) {
+            fetchRiddles();
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch user in template", err);
+      }
+    };
     
-    // NON-CRITICAL: Fetch all riddles in background if admin
-    if (user?.isAdmin) {
-      fetchRiddles();
-    }
+    fetchUser();
   }, []);
 
   // Handle riddle change

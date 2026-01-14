@@ -1,12 +1,16 @@
 import "@/styles/globals.css";
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
+import { startBackgroundSync, stopBackgroundSync } from "@/utils/backgroundSync";
 
 export default function App({ Component, pageProps }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Start background sync service
+    startBackgroundSync();
+
     const handleStart = (url) => {
       if (url !== router.asPath) setLoading(true);
     };

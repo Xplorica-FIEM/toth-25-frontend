@@ -279,8 +279,8 @@ export const deleteRiddle = async (riddleId) => {
 /**
  * Get all users (Admin)
  */
-export const getAdminUsers = async () => {
-  return fetchAPI('/api/admin/users');
+export const getAdminUsers = async (page = 1, limit = 20) => {
+  return fetchAPI(`/api/admin/users?page=${page}&limit=${limit}`);
 };
 
 /**
@@ -297,6 +297,25 @@ export const toggleAdminStatus = async (userId) => {
  */
 export const getAdminStats = async () => {
   return fetchAPI('/api/admin/stats');
+};
+
+/**
+ * Get Global Settings
+ */
+export const getGlobalSettings = async () => {
+  return fetchAPI('/api/admin/settings', {
+    method: 'GET',
+  });
+};
+
+/**
+ * Update Global Setting
+ */
+export const updateGlobalSetting = async (key, value) => {
+  return fetchAPI('/api/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify({ key, value }),
+  });
 };
 
 export default {
@@ -334,4 +353,6 @@ export default {
   getAdminUsers,
   toggleAdminStatus,
   getAdminStats,
+  getGlobalSettings,
+  updateGlobalSetting,
 };

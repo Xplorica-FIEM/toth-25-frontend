@@ -3,7 +3,7 @@
  * Syncs queued scans to backend when online
  */
 
-import { getPendingScans, markScanSynced } from './riddleCache';
+import { getPendingScans, markScanSynced, removeScanFromQueue } from './riddleCache';
 
 let syncInterval = null;
 const SYNC_INTERVAL_MS = 30000; // 30 seconds
@@ -25,30 +25,42 @@ async function syncPendingScans() {
       return;
     }
 
-    // Sync each scan
-    for (const scan of pendingScans) {
+    // Process in batches of 5
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < pendingScans.length; i += BATCH_SIZE) {
+      const batch = pendingScans.slice(i, i + BATCH_SIZE);
+      
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/scan`, {
+        const payload = {
+          scans: batch.map(scan => ({
+            riddleId: scan.riddleId,
+            scannedAt: scan.scannedAt
+          }))
+        };
+
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/scan/sync-offline`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            riddleId: scan.riddleId,
-            scannedAt: scan.scannedAt
-          })
+          body: JSON.stringify(payload)
         });
 
         if (response.ok) {
-          await markScanSynced(scan.queueId);
-          console.log(`✅ Synced scan for riddle ${scan.riddleId}`);
+          const result = await response.json();
+          console.log(`✅ Synced batch of ${result.synced} scans`);
+          
+          // Remove synced records directly from queue to save space
+          for (const scan of batch) {
+            await removeScanFromQueue(scan.queueId);
+          }
         } else {
-          console.warn(`⚠️ Failed to sync scan ${scan.queueId}:`, response.status);
+          console.warn(`⚠️ Failed to sync batch starting with ${batch[0].riddleId}:`, response.status);
         }
       } catch (error) {
-        console.error(`❌ Error syncing scan ${scan.queueId}:`, error);
-        // Continue with next scan
+        console.error(`❌ Error syncing batch:`, error);
+        // Continue with next batch
       }
     }
 
