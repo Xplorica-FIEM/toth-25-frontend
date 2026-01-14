@@ -370,7 +370,7 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
       console.error('❌ Scan error:', err);
       // Normalize error message to just "Invalid QR Code" for format/decryption issues
       let message = err.message;
-      if (message.includes("Invalid QR") || message.includes("Decryption")) {
+      if (message.includes("Invalid QR") || message.includes("Decryption") || message.includes("not found on device") || message.includes("configuration missing") || message.includes("No encrypted text")) {
           message = "Invalid QR Code";
       }
       setError(message);
