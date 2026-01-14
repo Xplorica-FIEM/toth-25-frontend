@@ -2,7 +2,8 @@
 
 import { getToken, removeToken } from './auth';
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+export const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+export const ADMIN_API_URL = process.env.NEXT_PUBLIC_ADMIN_BACKEND_URL || API_URL;
 
 /**
  * Generic fetch wrapper with JWT token injection
@@ -21,12 +22,16 @@ const fetchAPI = async (endpoint, options = {}) => {
 
   let response;
 
+  // Determine base URL based on endpoint or explicit isAdmin flag
+  const isAdminRequest = endpoint.startsWith('/api/admin') || options.isAdmin;
+  const baseUrl = isAdminRequest ? ADMIN_API_URL : API_URL;
+
   // Try to fetch - catch network errors separately
   try {
-    response = await fetch(`${API_URL}${endpoint}`, config);
+    response = await fetch(`${baseUrl}${endpoint}`, config);
   } catch (networkError) {
     console.error('❌ Network error - Backend not reachable:', networkError);
-    console.error('Backend URL:', API_URL);
+    console.error('Backend URL:', baseUrl);
     // Return a structured error response instead of throwing
     return {
       ok: false,
@@ -226,7 +231,7 @@ export const getTopPerformers = async () => {
  * Get all users
  */
 export const getUsers = async () => {
-  return fetchAPI('/api/users');
+  return fetchAPI('/api/users', { isAdmin: true });
 };
 
 /**
@@ -242,6 +247,7 @@ export const getUserById = async (userId) => {
 export const deleteUser = async (userId) => {
   return fetchAPI(`/api/users/${userId}`, {
     method: 'DELETE',
+    isAdmin: true,
   });
 };
 
@@ -293,8 +299,18 @@ export const deleteRiddle = async (riddleId) => {
 /**
  * Get all users (Admin)
  */
-export const getAdminUsers = async (page = 1, limit = 20) => {
-  return fetchAPI(`/api/admin/users?page=${page}&limit=${limit}`);
+export const getAdminUsers = async (page = 1, limit = 20, search = '') => {
+  const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+  return fetchAPI(`/api/admin/users?page=${page}&limit=${limit}${searchQuery}`);
+};
+
+/**
+ * Delete all scans for a specific user (Admin)
+ */
+export const deleteUserScans = async (userId) => {
+  return fetchAPI(`/api/admin/users/${userId}/scans`, {
+    method: 'DELETE',
+  });
 };
 
 /**
@@ -406,6 +422,7 @@ export default {
   updateRiddle,
   deleteRiddle,
   getAdminUsers,
+  deleteUserScans,
   toggleAdminStatus,
   getAdminStats,
   getRiddleScanStats,

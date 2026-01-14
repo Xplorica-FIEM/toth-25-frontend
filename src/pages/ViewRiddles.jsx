@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import RiddleTemplate from '../components/RiddleTemplate';
+import { ADMIN_API_URL } from '../utils/api';
 
 const ViewRiddles = () => {
   const router = useRouter();
@@ -22,7 +23,7 @@ const ViewRiddles = () => {
         setLoading(true);
         setError('');
         const token = localStorage.getItem('token');
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/admin/riddles/${riddleId}`, {
+        const response = await fetch(`${ADMIN_API_URL}/api/admin/riddles/${riddleId}`, {
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'

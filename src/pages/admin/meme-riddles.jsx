@@ -9,6 +9,7 @@ import QRCode from 'qrcode';
 import AdminLayout from '@/components/AdminLayout';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import useAdminStore from '@/store/adminStore';
+import { ADMIN_API_URL } from '@/utils/api';
 
 function MemeRiddlesAdminContent() {
   const router = useRouter();
@@ -32,7 +33,7 @@ function MemeRiddlesAdminContent() {
     setMemeRiddlesLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/meme-riddles`, {
+      const res = await fetch(`${ADMIN_API_URL}/api/meme-riddles`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -75,10 +76,9 @@ function MemeRiddlesAdminContent() {
 
     try {
       const token = localStorage.getItem('token');
-const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
       const url = editingId
-        ? `${baseUrl}/api/meme-riddles/${editingId}`
-        : `${baseUrl}/api/meme-riddles`;
+        ? `${ADMIN_API_URL}/api/meme-riddles/${editingId}`
+        : `${ADMIN_API_URL}/api/meme-riddles`;
       
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
@@ -118,7 +118,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/meme-riddles/${id}`, {
+      const res = await fetch(`${ADMIN_API_URL}/api/meme-riddles/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -134,7 +134,7 @@ const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
   const handleToggleActive = async (id, currentStatus) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'}/api/meme-riddles/${id}/toggle`, {
+      const res = await fetch(`${ADMIN_API_URL}/api/meme-riddles/${id}/toggle`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
