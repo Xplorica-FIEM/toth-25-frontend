@@ -194,6 +194,14 @@ export const getRiddleById = async (riddleId) => {
   return fetchAPI(`/api/riddles/${riddleId}`);
 };
 
+/**
+ * Get IDs of riddles the current user has scanned
+ * @returns {Promise} - Array of scanned riddle IDs
+ */
+export const getScannedRiddleIds = async () => {
+  return fetchAPI('/api/riddles/user/scanned');
+};
+
 // ==================== LEADERBOARD ENDPOINTS ====================
 
 /**
