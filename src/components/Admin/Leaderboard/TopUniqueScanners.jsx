@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Award, Loader2, RefreshCw, Timer } from "lucide-react";
 import { getUserUniqueRiddleStats } from "@/utils/api";
 
-const REFRESH_INTERVAL_MS = 60 * 1000;
 const ROW_LIMIT = 10;
 
 const formatScanWindow = (firstScanAt, lastScanAt) => {
@@ -19,7 +18,7 @@ const formatScanWindow = (firstScanAt, lastScanAt) => {
   return `${startLabel} → ${endLabel}`;
 };
 
-const TopUniqueScanners = ({ className = "" }) => {
+const TopUniqueScanners = ({ className = "", refreshInterval = 120000 }) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -47,9 +46,9 @@ const TopUniqueScanners = ({ className = "" }) => {
 
   useEffect(() => {
     fetchStats();
-    const intervalId = setInterval(fetchStats, REFRESH_INTERVAL_MS);
+    const intervalId = setInterval(fetchStats, refreshInterval);
     return () => clearInterval(intervalId);
-  }, [fetchStats]);
+  }, [fetchStats, refreshInterval]);
 
   const maxUnique = useMemo(() => {
     if (!players.length) {

@@ -1,14 +1,8 @@
 // pages/admin/statistics.jsx - Admin Statistics Page
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
-import { 
-  getAdminStats, 
-  getLeaderboard, 
-  getRiddleScanStats, 
-  getRecentScans, 
-  getUserScanStats 
-} from "@/utils/api";
+import { getAdminStats } from "@/utils/api";
 
 // Import new components
 import RecentScans from "@/components/Admin/Statistics/RecentScans";
@@ -20,82 +14,63 @@ function AdminStatisticsContent() {
   
   // Data states
   const [generalStats, setGeneralStats] = useState(null);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [riddleScans, setRiddleScans] = useState([]);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [userScanStats, setUserScanStats] = useState([]);
+  const [refreshInterval, setRefreshInterval] = useState(120000); // Default 2 mins
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = useCallback(async () => {
+    // Keep loading state mainly for initial load, or maybe just silent update?
+    // If I set loading=true every time, it will flicker.
+    // Better to only set loading true if generalStats is null.
+    if (!generalStats) setLoading(true); 
+    
     try {
-      // Fetch all stats in parallel
-      const [
-        statsRes, 
-        leaderboardRes,
-        riddleScansRes,
-        recentActivityRes,
-        userScanStatsRes
-      ] = await Promise.all([
-        getAdminStats(),
-        getLeaderboard(""),
-        getRiddleScanStats(),
-        getRecentScans(10), // Limit to 10 recent scans
-        getUserScanStats()
-      ]);
-
+      const statsRes = await getAdminStats();
       if (statsRes.ok) setGeneralStats(statsRes.data?.stats ?? null);
-      if (leaderboardRes.ok && Array.isArray(leaderboardRes.data?.leaderboard)) {
-        setLeaderboard(leaderboardRes.data.leaderboard);
-      }
-      if (riddleScansRes.ok) {
-        const scanStats = Array.isArray(riddleScansRes.data)
-          ? riddleScansRes.data
-          : Array.isArray(riddleScansRes.data?.data)
-            ? riddleScansRes.data.data
-            : [];
-        setRiddleScans(scanStats);
-      }
-      if (recentActivityRes.ok) {
-        const recentScans = Array.isArray(recentActivityRes.data)
-          ? recentActivityRes.data
-          : Array.isArray(recentActivityRes.data?.data)
-            ? recentActivityRes.data.data
-            : [];
-        setRecentActivity(recentScans);
-      }
-      if (userScanStatsRes.ok) {
-        const userStats = Array.isArray(userScanStatsRes.data)
-          ? userScanStatsRes.data
-          : Array.isArray(userScanStatsRes.data?.data)
-            ? userScanStatsRes.data.data
-            : [];
-        setUserScanStats(userStats);
-      }
-
     } catch (error) {
       console.error("Failed to fetch statistics data:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [generalStats]);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, refreshInterval);
+    return () => clearInterval(interval);
+  }, [fetchData, refreshInterval]);
+
 
   return (
     <AdminLayout activeTab="statistics">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-amber-100">Statistics Dashboard</h1>
-        <button 
-          onClick={fetchData}
-          className="p-2 bg-stone-800 rounded-lg hover:bg-stone-700 text-amber-500 transition-colors"
-          title="Refresh Data"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-        </button>
+        
+        <div className="flex items-center gap-4">
+             <div className="flex flex-col items-end gap-1">
+                <label className="text-[10px] text-amber-500/80 font-bold uppercase tracking-wider">Auto-Refresh</label>
+                <select 
+                  className="bg-stone-900 border border-stone-700 text-amber-100/90 text-sm rounded px-2 py-1 outline-none focus:border-amber-500"
+                  value={refreshInterval}
+                  onChange={(e) => setRefreshInterval(Number(e.target.value))}
+                >
+                  <option value={30000}>30s</option>
+                  <option value={60000}>1m</option>
+                  <option value={120000}>2m</option>
+                  <option value={300000}>5m</option>
+                  <option value={600000}>10m</option>
+                  <option value={900000}>15m</option>
+                </select>
+             </div>
+
+            <button 
+              onClick={fetchData}
+              className="p-2 bg-stone-800 rounded-lg hover:bg-stone-700 text-amber-500 transition-colors"
+              title="Refresh Data"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+        </div>
       </div>
 
       {loading ? (
@@ -140,13 +115,13 @@ function AdminStatisticsContent() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[500px]">
              {/* Left Column - Riddle Stats */}
              <div className="h-full">
-                <RiddleScanStats data={riddleScans} />
+                <RiddleScanStats refreshInterval={refreshInterval} />
              </div>
 
              {/* Right Column - User Stats & Recent */}
              <div className="grid grid-rows-2 gap-6 h-full">
-                <UserScanStats data={userScanStats.slice(0, 50)} />
-                <RecentScans data={recentActivity} />
+                <UserScanStats refreshInterval={refreshInterval} />
+                <RecentScans refreshInterval={refreshInterval} />
              </div>
           </div>
         </div>

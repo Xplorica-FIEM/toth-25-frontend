@@ -1,12 +1,35 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { getRiddleScanStats } from "@/utils/api";
 
-const RiddleScanStats = ({ data }) => {
+const RiddleScanStats = ({ refreshInterval = 120000 }) => {
+  const [data, setData] = useState([]);
   const [animatedData, setAnimatedData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+        const res = await getRiddleScanStats();
+        if(res.ok) {
+            setData(res.data.data || []);
+        }
+    } catch(e) {
+        console.error("Failed to fetch riddle stats", e);
+    } finally {
+        setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, refreshInterval);
+    return () => clearInterval(interval);
+  }, [fetchData, refreshInterval]);
+
   const maxCount = Math.max(...(data?.map(d => d.count) || [0]), 1);
 
   useEffect(() => {
-    if (data) {
+    if (data.length > 0) {
         // Delay setting data to trigger animation
         const timer = setTimeout(() => {
             setAnimatedData(data);
@@ -14,6 +37,7 @@ const RiddleScanStats = ({ data }) => {
         return () => clearTimeout(timer);
     }
   }, [data]);
+
 
   return (
     <div className="bg-stone-900 border border-stone-800 rounded-xl p-6 h-full overflow-hidden flex flex-col">

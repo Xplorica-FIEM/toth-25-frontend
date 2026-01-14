@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, QrCode, RefreshCw } from "lucide-react";
 import { getRiddleFirstScans } from "@/utils/api";
 
-const REFRESH_INTERVAL_MS = 60 * 1000;
-
 const formatTimestamp = (dateValue) => {
   if (!dateValue) {
     return "Awaiting first scan";
@@ -13,7 +11,7 @@ const formatTimestamp = (dateValue) => {
   return date.toLocaleString();
 };
 
-const RiddleFirstScanners = ({ className = "" }) => {
+const RiddleFirstScanners = ({ className = "", refreshInterval = 120000 }) => {
   const [riddles, setRiddles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -41,9 +39,9 @@ const RiddleFirstScanners = ({ className = "" }) => {
 
   useEffect(() => {
     fetchFirstScanners();
-    const intervalId = setInterval(fetchFirstScanners, REFRESH_INTERVAL_MS);
+    const intervalId = setInterval(fetchFirstScanners, refreshInterval);
     return () => clearInterval(intervalId);
-  }, [fetchFirstScanners]);
+  }, [fetchFirstScanners, refreshInterval]);
 
   const claimedCount = useMemo(
     () => riddles.filter((riddle) => Boolean(riddle.firstScanner)).length,

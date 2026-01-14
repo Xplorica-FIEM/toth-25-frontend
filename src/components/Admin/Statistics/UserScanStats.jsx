@@ -1,7 +1,31 @@
 
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { getUserScanStats } from "@/utils/api";
 
-const UserScanStats = ({ data }) => {
+const UserScanStats = ({ refreshInterval = 120000 }) => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+        const res = await getUserScanStats();
+        if(res.ok) {
+            // Check structure - UserScanStats used to slice(0, 50) in parent.
+            setData((res.data.data || []).slice(0, 50));
+        }
+    } catch(e) {
+        console.error("Failed to fetch user stats", e);
+    } finally {
+        setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, refreshInterval);
+    return () => clearInterval(interval);
+  }, [fetchData, refreshInterval]);
+
   return (
     <div className="bg-stone-900 border border-stone-800 rounded-xl p-6 h-full flex flex-col">
       <h3 className="text-lg font-semibold text-amber-100 mb-4 flex items-center gap-2">

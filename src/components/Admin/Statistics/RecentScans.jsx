@@ -1,7 +1,30 @@
 
-import React from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { getRecentScans } from "@/utils/api";
 
-const RecentScans = ({ data }) => {
+const RecentScans = ({ refreshInterval = 120000 }) => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    try {
+        const res = await getRecentScans(10); // Limit 10
+        if(res.ok) {
+            setData(res.data.data || []);
+        }
+    } catch(e) {
+        console.error("Failed to fetch recent scans", e);
+    } finally {
+        setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, refreshInterval);
+    return () => clearInterval(interval);
+  }, [fetchData, refreshInterval]);
+
   return (
     <div className="bg-stone-900 border border-stone-800 rounded-xl p-6 h-full flex flex-col">
       <h3 className="text-lg font-semibold text-amber-100 mb-4 flex items-center gap-2">
