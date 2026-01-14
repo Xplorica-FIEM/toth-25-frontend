@@ -109,8 +109,8 @@ function EditRiddleContent() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMessage("Image size should be less than 2MB");
+    if (file.size > 500 * 1024) {
+      setErrorMessage("Image size should be less than 500KB");
       setShowErrorModal(true);
       return;
     }
