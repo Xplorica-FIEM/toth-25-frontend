@@ -241,6 +241,13 @@ export const getAdminRiddles = async () => {
 };
 
 /**
+ * Get single riddle (Admin)
+ */
+export const getAdminRiddleById = async (riddleId) => {
+  return fetchAPI(`/api/admin/riddles/${riddleId}`);
+};
+
+/**
  * Create riddle (Admin)
  */
 export const createRiddle = async (riddleData) => {
@@ -320,6 +327,7 @@ export default {
   
   // Admin
   getAdminRiddles,
+  getAdminRiddleById,
   createRiddle,
   updateRiddle,
   deleteRiddle,

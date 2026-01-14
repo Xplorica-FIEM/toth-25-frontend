@@ -236,12 +236,36 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
                   {/* Ornate top decoration */}
                   <div className="absolute top-1 md:top-2 left-1/2 transform -translate-x-1/2 text-amber-900/30 text-base md:text-2xl" style={{fontFamily: 'Uncial Antiqua'}}>✦ ❧ ✦</div>
                   
-                  <div className="text-amber-950 text-base md:text-xl lg:text-2xl leading-relaxed text-center space-y-2 md:space-y-3 mt-4 md:mt-6" style={{fontFamily: 'IM Fell English, serif', fontStyle: 'italic'}}>
-                    {riddleContent.split('\n').map((line, index) => (
-                      <p key={index} className="animate-fadeIn drop-shadow-sm" style={{ animationDelay: `${index * 0.1}s` }}>
-                        {line}
-                      </p>
-                    ))}
+                  <div className="text-amber-950 text-base md:text-xl lg:text-2xl leading-relaxed text-center space-y-4 mt-4 md:mt-6" style={{fontFamily: 'IM Fell English, serif', fontStyle: 'italic'}}>
+                    {(() => {
+                      let components = [{ type: 'text', data: riddleContent }];
+                      try {
+                        if (riddleContent && (riddleContent.startsWith('[') || riddleContent.startsWith('{'))) {
+                          const parsed = JSON.parse(riddleContent);
+                          if (Array.isArray(parsed)) components = parsed;
+                        }
+                      } catch (e) {}
+
+                      return components.map((comp, idx) => (
+                        <div key={idx} className="animate-fadeIn" style={{ animationDelay: `${idx * 0.15}s` }}>
+                          {comp.type === 'image' ? (
+                            <div className="my-4 flex justify-center">
+                              <img 
+                                src={comp.data} 
+                                alt="Clue" 
+                                className="max-w-full max-h-[40vh] object-contain rounded-lg border-2 border-amber-900/30 shadow-lg"
+                              />
+                            </div>
+                          ) : (
+                            comp.data.split('\n').map((line, lIdx) => (
+                              <p key={lIdx} className="drop-shadow-sm mb-2 last:mb-0">
+                                {line}
+                              </p>
+                            ))
+                          )}
+                        </div>
+                      ));
+                    })()}
                   </div>
                   
                   {/* Ornate bottom decoration */}
