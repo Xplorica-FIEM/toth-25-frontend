@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Award, Loader2, RefreshCw, Timer } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, Fragment } from "react";
+import { Award, ChevronDown, ChevronUp, Loader2, RefreshCw, Timer } from "lucide-react";
 import { getUserUniqueRiddleStats } from "@/utils/api";
 
 const ROW_LIMIT = 10;
@@ -22,6 +22,17 @@ const TopUniqueScanners = ({ className = "", refreshInterval = 120000 }) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedRows, setExpandedRows] = useState(new Set());
+
+  const toggleRow = (userId) => {
+    const next = new Set(expandedRows);
+    if (next.has(userId)) {
+      next.delete(userId);
+    } else {
+      next.add(userId);
+    }
+    setExpandedRows(next);
+  };
 
   const fetchStats = useCallback(async () => {
     try {
@@ -103,6 +114,7 @@ const TopUniqueScanners = ({ className = "", refreshInterval = 120000 }) => {
                 <th className="px-4 py-3 font-semibold">Player</th>
                 <th className="px-4 py-3 font-semibold">Unique Riddles</th>
                 <th className="px-4 py-3 font-semibold">Play Time</th>
+                <th className="px-4 py-3 font-semibold w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-800">
@@ -112,53 +124,95 @@ const TopUniqueScanners = ({ className = "", refreshInterval = 120000 }) => {
                 const percentage = Math.max(5, Math.round((uniqueCount / maxUnique) * 100));
                 const name = player.user?.fullName || "Unknown Player";
                 const email = player.user?.email || "";
+                const isExpanded = expandedRows.has(player.userId);
+                
                 return (
-                  <tr key={`${player.userId}-${rank}`} className="bg-stone-900/40">
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex size-10 items-center justify-center rounded-full font-bold text-sm text-stone-950 ${
-                          rank === 1
-                            ? "bg-yellow-400"
-                            : rank === 2
-                            ? "bg-gray-200"
-                            : rank === 3
-                            ? "bg-amber-500"
-                            : "bg-stone-800 text-amber-200"
-                        }`}
-                      >
-                        {rank}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <p className="font-semibold text-amber-50">{name}</p>
-                      <p className="text-xs text-amber-200/70">{email}</p>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-amber-100">
-                          <Award className="size-4 text-amber-400" />
-                          {uniqueCount} riddles
+                  <Fragment key={`${player.userId}-${rank}`}>
+                    <tr 
+                      className={`cursor-pointer transition-colors ${
+                        isExpanded ? "bg-stone-800/60" : "bg-stone-900/40 hover:bg-stone-800/40"
+                      }`}
+                      onClick={() => toggleRow(player.userId)}
+                    >
+                      <td className="px-4 py-4">
+                        <span
+                          className={`inline-flex size-10 items-center justify-center rounded-full font-bold text-sm text-stone-950 ${
+                            rank === 1
+                              ? "bg-yellow-400"
+                              : rank === 2
+                              ? "bg-gray-200"
+                              : rank === 3
+                              ? "bg-amber-500"
+                              : "bg-stone-800 text-amber-200"
+                          }`}
+                        >
+                          {rank}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <p className="font-semibold text-amber-50">{name}</p>
+                        <p className="text-xs text-amber-200/70">{email}</p>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-amber-100">
+                            <Award className="size-4 text-amber-400" />
+                            {uniqueCount} riddles
+                          </div>
+                          <div className="h-2 rounded-full bg-stone-800">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-400"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="h-2 rounded-full bg-stone-800">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-400"
-                            style={{ width: `${percentage}%` }}
-                          />
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="space-y-1 text-sm">
+                          <div className="flex items-center gap-2 font-semibold text-emerald-300">
+                            <Timer className="size-4" />
+                            {player.durationFormatted || "—"}
+                          </div>
+                          <p className="text-xs text-amber-200/60">
+                            {formatScanWindow(player.firstScanAt, player.lastScanAt)}
+                          </p>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2 font-semibold text-emerald-300">
-                          <Timer className="size-4" />
-                          {player.durationFormatted || "—"}
-                        </div>
-                        <p className="text-xs text-amber-200/60">
-                          {formatScanWindow(player.firstScanAt, player.lastScanAt)}
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-4 py-4 text-amber-400">
+                        {isExpanded ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-stone-900/40">
+                        <td colSpan={5} className="px-4 pb-4 pt-0">
+                          <div className="ml-14 mt-2 rounded-xl border border-stone-700 bg-stone-950/50 p-4">
+                            <h4 className="mb-3 text-xs font-bold uppercase tracking-wider text-amber-500">
+                              Scan Sequence (In Order)
+                            </h4>
+                            {player.sequence && player.sequence.length > 0 ? (
+                              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+                                {player.sequence.map((item, idx) => (
+                                  <div 
+                                    key={`${item.id}-${idx}`}
+                                    className="flex items-center gap-3 rounded-lg border border-stone-800 bg-stone-900 p-2 text-sm"
+                                  >
+                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-800 text-xs font-bold text-amber-500">
+                                      {idx + 1}
+                                    </span>
+                                    <span className="truncate font-medium text-amber-100" title={item.name}>
+                                      {item.name}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-stone-500 italic">No sequence data available.</p>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>
