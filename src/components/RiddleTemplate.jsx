@@ -205,7 +205,7 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
               </button>
               
               <button
-                onClick={() => router.push(`/admin/riddles/edit?id=${riddleId}`)}
+                onClick={() => router.push(`/admin/riddles/${riddleId}`)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-700/90 hover:bg-purple-600 text-purple-100 rounded-lg font-semibold shadow-lg border border-purple-600 text-xs transition-all duration-300 ease-out hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Edit className="size-3" />

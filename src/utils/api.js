@@ -142,10 +142,17 @@ export const scanQR = async (qrData) => {
 // ==================== GAME ENDPOINTS ====================
 
 /**
- * Get user game progress
+ * Load complete game state (riddles, status)
  */
-export const getProgress = async () => {
-  return fetchAPI('/api/game/progress');
+export const loadGame = async () => {
+  return fetchAPI('/api/game/load');
+};
+
+/**
+ * Get last game update timestamp
+ */
+export const getLastGameUpdate = async () => {
+  return fetchAPI('/api/game/last-updated');
 };
 
 /**
@@ -153,13 +160,6 @@ export const getProgress = async () => {
  */
 export const getMyScans = async () => {
   return fetchAPI('/api/game/my-scans');
-};
-
-/**
- * Get all scanned riddles (unique)
- */
-export const getScannedRiddles = async () => {
-  return fetchAPI('/api/game/scanned-riddles');
 };
 
 /**
@@ -346,6 +346,13 @@ export const updateGlobalSetting = async (key, value) => {
   });
 };
 
+/**
+ * Check if game has started
+ */
+export const checkGameStatus = async () => {
+  return fetchAPI('/api/game/load');
+};
+
 export default {
   // Auth
   register,
@@ -358,9 +365,9 @@ export default {
   scanQR,
   
   // Game
-  getProgress,
+  loadGame,
+  getLastGameUpdate,
   getMyScans,
-  getScannedRiddles,
   completeGame,
   syncOfflineScans,
   
@@ -387,4 +394,5 @@ export default {
   getUserScanStats,
   getGlobalSettings,
   updateGlobalSetting,
+  checkGameStatus,
 };

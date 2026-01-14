@@ -7,7 +7,7 @@ import {
   Anchor, Map, Key, Scroll, Crown, X
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { getCurrentUser, getProgress, getScannedRiddles } from "@/utils/api";
+import { getCurrentUser, loadGame, getLastGameUpdate } from "@/utils/api";
 import { logout, getUser } from "@/utils/auth";
 import LoadingScreen from "./LoadingScreen";
 import BackgroundElements from "./BackgroundElements";
@@ -24,9 +24,9 @@ const DashboardBody = () => {
   const router = useRouter();
   const [showScanner, setShowScanner] = useState(false);
   const [user, setUser] = useState(null);
-  const [progress, setProgress] = useState(null);
   const [riddles, setRiddles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasLockedRiddles, setHasLockedRiddles] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [gameStatus, setGameStatus] = useState("loading");
   const [startTime] = useState(TARGET_GAME_START);
@@ -54,86 +54,111 @@ const DashboardBody = () => {
       const userResponse = await getCurrentUser();
       if (userResponse.ok) setUser(userResponse.data.user);
 
-      const unlockedRiddlesData = localStorage.getItem("unlocked-riddles");
-      if (unlockedRiddlesData) {
-        try {
-          const unlockedMap = JSON.parse(unlockedRiddlesData || "{}");
-          const cachedRiddles = Object.entries(unlockedMap).map(([id, value]) => {
-            const info = typeof value === "string" ? { puzzleText: value } : value || {};
-            return {
-              id,
-              puzzleText: info.puzzleText || "",
-              riddleName: info.riddleName || "Mystery Clue",
-              scannedAt: info.scannedAt || null,
-              isSolved: true,
-            };
-          });
-
-          if (cachedRiddles.length > 0) {
-            setRiddles(cachedRiddles);
-            setProgress((prev) => prev || { riddlesSolved: cachedRiddles.length });
-            setGameStatus("active");
-          }
-        } catch (parseError) {
-          console.error("Failed to restore cached riddles:", parseError);
-        }
-      }
-
-      await fetchDashboardData();
+      await checkAndLoadGame(false);
     } catch (error) {
       console.error("Init error:", error);
-      setLoading(false);
-    }
-  };
-
-  const fetchDashboardData = async () => {
-    try {
-      const [progressResponse, scannedResponse] = await Promise.all([
-        getProgress(),
-        getScannedRiddles(),
-      ]);
-
-      if (progressResponse.ok && progressResponse.data?.progress) {
-        setProgress(progressResponse.data.progress);
-      }
-
-      let status = progressResponse.data?.progress?.totalRiddles > 0 ? "active" : "not_started";
-
-      if (scannedResponse.ok && Array.isArray(scannedResponse.data?.riddles)) {
-        const unlockedMapping = {};
-        const solvedRiddles = scannedResponse.data.riddles
-          .map(({ riddle, scannedAt }) => {
-            if (!riddle) return null;
-            const entry = {
-              id: riddle.id,
-              puzzleText: riddle.puzzleText,
-              riddleName: riddle.riddleName || "Mystery Clue",
-              isSolved: true,
-              scannedAt,
-            };
-            unlockedMapping[riddle.id] = entry;
-            return entry;
-          })
-          .filter(Boolean);
-
-        localStorage.setItem("unlocked-riddles", JSON.stringify(unlockedMapping));
-        setRiddles(solvedRiddles);
-        if (solvedRiddles.length > 0) {
-          status = "active";
-        }
-      } else {
-        setRiddles([]);
-      }
-
-      setGameStatus(status);
-      setLoading(false);
-      
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
       if (error.message === "Unauthorized" || error.message === "Authentication required") {
         handleLogout();
       }
       setLoading(false);
+    }
+  };
+
+  const checkAndLoadGame = async (forceRefetch = false) => {
+    try {
+      const localUnlocked = localStorage.getItem("unlocked-riddles");
+      
+      // 1. Initial Load from LocalStorage (if exists)
+      if (localUnlocked) {
+        try {
+          const unlockedMap = JSON.parse(localUnlocked);
+          // riddles state holds ARRAY of unlocked/solved riddles
+          const unlockedList = Object.values(unlockedMap);
+          setRiddles(unlockedList);
+          if (unlockedList.length > 0) {
+            setGameStatus("active");
+          }
+        } catch (parseError) {
+          console.error("Failed to parse local riddles:", parseError);
+        }
+      }
+
+      // 2. Check outdated vs Server
+      let shouldFetch = forceRefetch;
+      
+      if (!shouldFetch) {
+        // If we don't have data, we MUST fetch
+        if (!localUnlocked) {
+          shouldFetch = true;
+        } else {
+            // Check timestamps
+            const localLastUpdated = localStorage.getItem("game-last-updated");
+            // If we have data but no timestamp, we probably should fetch to be safe, 
+            // or maybe we trust the data? User said "if yes then no need to fetch it."
+            // But also said: "Everytime user refresh ... check last update time api ... If mismatches then immideately call loadgame"
+            // So I should check timestamp.
+            
+            const updateRes = await getLastGameUpdate();
+            if (updateRes.ok) {
+                const serverLastUpdated = updateRes.data.lastUpdated;
+                if (serverLastUpdated !== localLastUpdated) {
+                    shouldFetch = true;
+                }
+            }
+        }
+      }
+
+      // 3. Fetch from Server if needed
+      if (shouldFetch) {
+          const gameRes = await loadGame();
+          
+          if (gameRes.ok) {
+              const { riddles: allRiddles, lastUpdated } = gameRes.data;
+              
+              const newUnlocked = {};
+              const newLocked = {};
+              
+              allRiddles.forEach(r => {
+                  if (r.isSolved) {
+                      newUnlocked[r.id] = r;
+                  } else {
+                      newLocked[r.id] = r;
+                  }
+              });
+              
+              localStorage.setItem("unlocked-riddles", JSON.stringify(newUnlocked));
+              localStorage.setItem("locked-riddles", JSON.stringify(newLocked));
+              if (lastUpdated) {
+                  localStorage.setItem("game-last-updated", lastUpdated);
+              }
+              
+              const unlockedList = Object.values(newUnlocked);
+              setRiddles(unlockedList);
+              
+              setGameStatus("active"); // Set active if we successfully loaded game
+              
+              if (allRiddles.length === 0) {
+                 // No riddles at all?
+              }
+
+          } else if (gameRes.status === 403 && gameRes.data?.type === 'game_not_started') {
+              setGameStatus("not_started");
+          }
+      }
+
+      // Check for available locked riddles to enable scanning
+      const finalLockedStr = localStorage.getItem("locked-riddles");
+      if (finalLockedStr) {
+        const lockedObj = JSON.parse(finalLockedStr);
+        setHasLockedRiddles(Object.keys(lockedObj).length > 0);
+      } else {
+        setHasLockedRiddles(false);
+      }
+      
+    } catch (error) {
+        console.error("Error loading game:", error);
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -147,7 +172,7 @@ const DashboardBody = () => {
 
   const closeScanner = () => {
     setShowScanner(false);
-    fetchDashboardData();
+    checkAndLoadGame(true); // Always refresh after a scan attempt
   };
 
   if (loading) return <LoadingScreen />;
@@ -187,9 +212,11 @@ const DashboardBody = () => {
               </div>
             </div>
 
-            <StatsGrid
-              onOpenScanner={() => setShowScanner(true)}
-            />
+            {hasLockedRiddles && (
+              <StatsGrid
+                onOpenScanner={() => setShowScanner(true)}
+              />
+            )}
 
             <SolvedRiddles riddles={riddles} />
           </>

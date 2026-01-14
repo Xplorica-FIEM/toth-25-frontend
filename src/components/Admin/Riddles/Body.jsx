@@ -144,7 +144,7 @@ const RiddlesPageBody = () => {
   };
 
   const handleEditRiddle = (riddleId) => {
-    router.push(`/admin/riddles/edit?id=${riddleId}`);
+    router.push(`/admin/riddles/${riddleId}`);
   };
 
   return (
