@@ -292,11 +292,12 @@ const RiddleTemplate = ({ riddleContent, title, orderNumber, backgroundImage, is
                       return components.map((comp, idx) => (
                         <div key={idx} className="animate-fadeIn" style={{ animationDelay: `${idx * 0.15}s` }}>
                           {comp.type === 'image' ? (
-                            <div className="my-4 flex justify-center">
+                            <div className="my-4 flex justify-center w-full">
                               <img 
                                 src={comp.data} 
                                 alt="Clue" 
-                                className="max-w-full max-h-[40vh] object-contain rounded-lg border-2 border-amber-900/30 shadow-lg"
+                                className="w-full h-auto object-contain rounded-lg border-2 border-amber-900/30 shadow-lg"
+                                style={{ maxWidth: '100%' }}
                               />
                             </div>
                           ) : (
