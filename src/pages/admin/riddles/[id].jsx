@@ -109,8 +109,8 @@ function EditRiddleContent() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 500 * 1024) {
-      setErrorMessage("Image size should be less than 500KB");
+    if (file.size > 1024 * 1024) {
+      setErrorMessage("Image size should be less than 1MB");
       setShowErrorModal(true);
       return;
     }
@@ -299,7 +299,7 @@ function EditRiddleContent() {
                       <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-stone-700 rounded-lg cursor-pointer hover:bg-stone-800/50 transition-colors">
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
                           <Upload className="size-8 text-stone-500 mb-2" />
-                          <p className="text-xs text-stone-400">Click to upload image (Max 2MB)</p>
+                          <p className="text-xs text-stone-400">Click to upload image (Max 1MB)</p>
                         </div>
                         <input
                           type="file"
