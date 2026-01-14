@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Mail, Lock, Compass, Key, Anchor, Map, Shield, LogIn, Eye, EyeOff } from 'lucide-react';
 import Head from 'next/head';
+import { saveToken } from '@/utils/auth';
 
 export default function Login() {
   const router = useRouter();
@@ -62,8 +63,7 @@ export default function Login() {
       }
 
       // Store token and user data
-      localStorage.setItem('token', data.token);
-      // localStorage.setItem('user', JSON.stringify(data.user)); // Access via API only now
+      saveToken(data.token);
 
       // Redirect to appropriate dashboard
       if (data.user.isAdmin) {

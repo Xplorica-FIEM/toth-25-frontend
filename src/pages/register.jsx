@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { UserPlus, Mail, Phone, User, Hash, Lock, Map, Anchor, Ship, Scroll, Compass, Eye, EyeOff } from 'lucide-react';
 import { DEPARTMENTS } from '../constants/departments';
+import { saveToken } from '@/utils/auth';
 import Head from 'next/head';
 
 export default function Register() {
@@ -110,7 +111,7 @@ export default function Register() {
 
       const { token, user } = data;
       if (token) {
-        localStorage.setItem('token', token);
+        saveToken(token);
       }
 
       router.push(user?.isAdmin ? '/admin/dashboard' : '/dashboard');

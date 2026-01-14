@@ -7,6 +7,8 @@ import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
 import { triggerSync } from "@/utils/backgroundSync";
 import { decryptAES } from "@/utils/crypto";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
 export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add onScanSuccess prop
   const router = useRouter();
   const videoRef = useRef(null);
@@ -26,6 +28,64 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
   
   const videoStreamRef = useRef(null);
   const scanIntervalRef = useRef(null);
+
+  const persistScanToServer = useCallback(
+    async (riddleId, scannedAtIso, options = {}) => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error("Your session expired. Please login again before scanning.");
+      }
+
+      const payload = {
+        riddleId,
+        scannedAt: scannedAtIso,
+      };
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/scan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const contentType = response.headers?.get('content-type');
+        const responseData = contentType && contentType.includes('application/json')
+          ? await response.json()
+          : null;
+
+        if (!response.ok) {
+          const message = responseData?.error || responseData?.message || 'Scan failed';
+          throw new Error(message);
+        }
+
+        return responseData;
+      } catch (error) {
+        const offline = typeof navigator !== 'undefined' && !navigator.onLine;
+        const networkIssue =
+          error?.name === 'TypeError' ||
+          /NetworkError|Failed to fetch|Load failed/i.test(error?.message || '');
+
+        if (offline || networkIssue) {
+          console.warn('Network issue while saving scan, queueing for retry', error);
+          await queueScan(riddleId, scannedAtIso);
+          await triggerSync();
+          setIsOffline(true);
+
+          if (options.requireRiddleData) {
+            throw new Error("You're offline. Scan saved locally and will sync once you're back online.");
+          }
+
+          return null;
+        }
+
+        throw error;
+      }
+    },
+    [setIsOffline]
+  );
 
   useEffect(() => {
     // Detect if mobile device
@@ -249,80 +309,54 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
       if (!plainRiddleId.includes(':') && plainRiddleId.length === 6) {
         // Check localStorage cache first
         const cachedRiddle = await getCachedRiddle(plainRiddleId);
-        
+        const scannedAtIso = new Date().toISOString();
+
         let riddleData = null;
-        
+
         if (cachedRiddle) {
           console.log(`✅ Cache hit for riddle id: ${plainRiddleId}`);
-          
+          setLoadingMessage("⚡ Saving your scan...");
           riddleData = {
             id: cachedRiddle.id,
             riddleName: cachedRiddle.riddleName,
             puzzleText: cachedRiddle.puzzleText,
             orderNumber: cachedRiddle.orderNumber
           };
-          
-          await queueScan(plainRiddleId);
-          triggerSync();
-          
-          localStorage.setItem('currentRiddleId', plainRiddleId);
-          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-          
-          if (onScanSuccess) {
-            onScanSuccess(plainRiddleId);
-            return;
-          }
-
-          await router.push(
-            {
-              pathname: '/ViewRiddles',
-              query: { id: plainRiddleId }
-            },
-            '/ViewRiddles'
-          );
-          onClose();
-          return;
         } else {
-          // Cache miss: Call backend API
-          await queueScan(plainRiddleId);
-          triggerSync();
-
           setLoadingMessage("⚡ Loading riddle...");
-          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/scan`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({ riddleId: plainRiddleId })
-          });
+        }
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || errorData.message || "Scan failed");
-          }
+        const serverData = await persistScanToServer(
+          plainRiddleId,
+          scannedAtIso,
+          { requireRiddleData: !cachedRiddle }
+        );
 
-          const data = await response.json();
-          riddleData = data.riddle;
-          
-          localStorage.setItem('currentRiddleId', plainRiddleId);
-          localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
-          
-          if (onScanSuccess) {
-            onScanSuccess(plainRiddleId);
-            return;
-          }
+        if (serverData?.riddle) {
+          riddleData = serverData.riddle;
+        }
 
-          await router.push(
-            {
-              pathname: '/ViewRiddles',
-              query: { id: plainRiddleId }
-            },
-            '/ViewRiddles'
-          );
-          onClose();
+        if (!riddleData) {
+          throw new Error("Riddle data unavailable. Please try again.");
+        }
+
+        localStorage.setItem('currentRiddleId', plainRiddleId);
+        localStorage.setItem('currentRiddleData', JSON.stringify(riddleData));
+        
+        if (onScanSuccess) {
+          onScanSuccess(plainRiddleId);
           return;
         }
+
+        await router.push(
+          {
+            pathname: '/ViewRiddles',
+            query: { id: plainRiddleId }
+          },
+          '/ViewRiddles'
+        );
+        onClose();
+        return;
       } else {
          // Fails format check and didn't match previous flows
          throw new Error("Invalid QR Code");
