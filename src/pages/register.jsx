@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { UserPlus, Mail, Phone, User, Hash, Lock, Map, Anchor, Ship, Scroll, Compass, Eye, EyeOff } from 'lucide-react';
 import { DEPARTMENTS } from '../constants/departments';
+import Head from 'next/head';
 
 export default function Register() {
   const router = useRouter();
@@ -88,12 +89,12 @@ export default function Register() {
 
       if (!res.ok) {
         const errorMessage = data.error || data.message || 'Registration failed';
-        
+
         // Check if email already registered - redirect to login
-        if (errorMessage.toLowerCase().includes('email') && 
-            (errorMessage.toLowerCase().includes('already') || 
-             errorMessage.toLowerCase().includes('exists') || 
-             errorMessage.toLowerCase().includes('registered'))) {
+        if (errorMessage.toLowerCase().includes('email') &&
+          (errorMessage.toLowerCase().includes('already') ||
+            errorMessage.toLowerCase().includes('exists') ||
+            errorMessage.toLowerCase().includes('registered'))) {
           // Show error briefly then redirect
           setErrors({ submit: errorMessage });
           setTimeout(() => {
@@ -101,7 +102,7 @@ export default function Register() {
           }, 2000);
           return;
         }
-        
+
         setErrors({ submit: errorMessage });
         setLoading(false);
         return;
@@ -116,6 +117,10 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-stone-900 via-amber-950 to-stone-900 relative overflow-hidden">
+      <Head>
+        <title>Register - Trails of the Hunt</title>
+        <meta name="description" content="Join the Trails of the Hunt - Register to embark on legendary adventures and uncover hidden treasures!" />
+      </Head>
       {/* Subtle Floating Particles - Hidden on mobile, visible on tablet+ */}
       <div className="hidden md:block absolute inset-0 pointer-events-none overflow-hidden opacity-30">
         <Map className="absolute top-20 left-10 w-16 h-16 text-amber-600" style={{ animation: 'float 8s ease-in-out infinite' }} />

@@ -7,7 +7,7 @@ import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
 import { triggerSync } from "@/utils/backgroundSync";
 import { decryptAES } from "@/utils/crypto";
 
-export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess prop
+export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add onScanSuccess prop
   const router = useRouter();
   const videoRef = useRef(null);
   const readerRef = useRef(null);
@@ -143,6 +143,14 @@ export default function Scan({ onClose, onScanSuccess }) { // Add onScanSuccess 
 
     try {
       if (!qrData) throw new Error("Empty QR Code");
+
+      // Handle raw mode (e.g. for Admin verification)
+      if (mode === "raw") {
+        if (onScanSuccess) {
+            onScanSuccess(qrData);
+        }
+        return;
+      }
 
       // 1. Handle Encrypted Riddle (ID:Secret format)
       if (qrData.includes(':')) {

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import Head from 'next/head';
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -63,6 +64,10 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-900 via-amber-950 to-stone-900 flex items-center justify-center p-4">
+      <Head>
+        <title>Forgot Password - TOTH '26</title>
+        <meta name="description" content="Request a password reset link for your Xplorica TOTH account." />
+      </Head>
       <div className="w-full max-w-md">
         {/* Back Button */}
         <Link 

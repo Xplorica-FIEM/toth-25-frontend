@@ -13,6 +13,7 @@ import {
   Shield,
   ImagePlus,
   Settings,
+  ScanLine,
 } from "lucide-react";
 import { logout } from "@/utils/auth";
 import { getCurrentUser } from "@/utils/api";
@@ -62,6 +63,7 @@ export default function AdminLayout({ children, activeTab }) {
     
     { id: "leaderboard", label: "Leaderboard", icon: Trophy, path: "/admin/leaderboard" },
     { id: "statistics", label: "Statistics", icon: BarChart3, path: "/admin/statistics" },
+    { id: "verify-qr", label: "Verify QR", icon: ScanLine, path: "/admin/verify-qr" },
     { id: "settings", label: "Global Settings", icon: Settings, path: "/admin/settings" },
   ];
 

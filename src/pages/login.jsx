@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Mail, Lock, Compass, Key, Anchor, Map, Shield, LogIn, Eye, EyeOff } from 'lucide-react';
+import Head from 'next/head';
 
 export default function Login() {
   const router = useRouter();
@@ -82,6 +83,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-stone-900 via-amber-950 to-stone-900 relative overflow-hidden">
+      <Head>
+        <title>Login - Trails of the Hunt</title>
+        <meta name="description" content="Login to Trails of the Hunt - Begin your adventure!" />
+      </Head>
       {/* Subtle Floating Treasure Icons - Hidden on mobile */}
       <div className="hidden md:block absolute inset-0 pointer-events-none overflow-hidden opacity-30">
         <Key className="absolute top-20 left-20 w-12 h-12 text-amber-600" style={{ animation: 'float 7s ease-in-out infinite' }} />
