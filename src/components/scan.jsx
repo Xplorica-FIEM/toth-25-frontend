@@ -6,7 +6,7 @@ import { X, Sparkles, Globe, ShieldAlert, Flashlight, FlashlightOff, Smartphone,
 import { getCachedRiddle, queueScan } from "@/utils/riddleCache";
 import { triggerSync } from "@/utils/backgroundSync";
 import { decryptAES } from "@/utils/crypto";
-import { getLockedRiddle, getUnlockedRiddle, unlockRiddle } from "@/utils/riddleStorage";
+import { getLockedRiddle, getUnlockedRiddle, unlockRiddle, migrateFromLegacyStorage } from "@/utils/riddleStorage";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
@@ -91,6 +91,9 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
   useEffect(() => {
     // Detect if mobile device
     setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    
+    // Migrate legacy storage format if needed
+    migrateFromLegacyStorage();
     
     // Monitor online/offline status
     const handleOnline = () => {
@@ -263,7 +266,7 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
         // 2. First check if riddle is already unlocked (re-scan case)
         const unlockedData = getUnlockedRiddle(riddleId);
         
-        if (unlockedData && unlockedData.puzzleText && unlockedData.isSolved) {
+        if (unlockedData && unlockedData.puzzleText) {
           // Already unlocked - use cached decrypted data
           console.log('✅ Riddle already unlocked, using cached data:', riddleId);
           
@@ -305,10 +308,23 @@ export default function Scan({ onClose, onScanSuccess, mode = "game" }) { // Add
         }
 
         // 3. Fetch from distributed localStorage (locked riddles)
-        const lockedData = getLockedRiddle(riddleId);
+        let lockedData = getLockedRiddle(riddleId);
+
+        // Fallback: check old storage format (riddle-data-*)
+        if (!lockedData) {
+            try {
+                const oldFormatData = localStorage.getItem(`riddle-data-${riddleId}`);
+                if (oldFormatData) {
+                    lockedData = JSON.parse(oldFormatData);
+                    console.log('📦 Found riddle in old storage format');
+                }
+            } catch (e) {
+                console.warn('Failed to check old storage format:', e);
+            }
+        }
 
         if (!lockedData) {
-            throw new Error("Riddle definition not found on device.");
+            throw new Error("Riddle definition not found on device. Please refresh the page and try again.");
         }
 
         // Handle data as a direct string based on your localStorage structure
